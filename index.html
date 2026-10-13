@@ -4,248 +4,279 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#101F5C">
-  <meta name="description" content="Depósito Cumaru: bebidas, cervejas, refrigerantes, gelo e pedidos pelo WhatsApp.">
-  <title>Depósito Cumaru | Bebidas e Conveniência</title>
-
-  <link rel="stylesheet" href="style.css">
-  <script src="script.js" defer></script>
+  <meta name="theme-color" content="#081438">
+  <meta name="description" content="Escolha suas bebidas, monte seu pedido e envie pelo WhatsApp ao Depósito Cumaru.">
+  <title>Depósito Cumaru | Bebidas e conveniência</title>
+  <link rel="stylesheet" href="./style.css">
 </head>
-
 <body>
+
+  <!-- CABEÇALHO -->
   <header class="cabecalho">
     <div class="container cabecalho-conteudo">
-
-      <a href="#inicio" class="marca" aria-label="Depósito Cumaru - Início">
+      <a class="marca" href="#inicio" aria-label="Depósito Cumaru - início">
         <img
-          src="assets/logo-cumaru.jpeg"
+          src="./assets/logo-cumaru.jpeg"
           alt="Logo do Depósito Cumaru"
-          class="logo-oficial"
-          width="180"
-          height="64">
+          width="48"
+          height="48"
+          onerror="this.style.display='none';this.nextElementSibling.style.display='grid';"
+        >
+        <span class="marca-icone" style="display:none;">DC</span>
+        <span class="marca-textos">
+          <strong>DEPÓSITO</strong>
+          <span>CUMARU</span>
+        </span>
       </a>
 
-      <nav class="navegacao" aria-label="Menu principal">
+      <nav class="navegacao" aria-label="Navegação principal">
         <a href="#inicio">Início</a>
         <a href="#produtos">Produtos</a>
         <a href="#contato">Contato</a>
       </nav>
 
-      <button
-        id="abrir-carrinho"
-        class="botao-carrinho"
-        type="button"
-        aria-label="Abrir carrinho de compras">
-        🛒 Meu pedido
-        <span id="contador-carrinho">0</span>
+      <button class="botao-carrinho" id="abrir-carrinho" type="button">
+        <span aria-hidden="true">🛒</span>
+        <span>Meu pedido</span>
+        <span class="contador-carrinho" id="contador-carrinho">0</span>
       </button>
-
     </div>
   </header>
 
+  <!-- AVISO DE EVENTO -->
+  <div class="aviso-evento" id="aviso-evento" hidden>
+    <span class="ponto-evento"></span>
+    <span id="texto-aviso-evento">Preços especiais para o evento!</span>
+  </div>
+
   <main>
-    <section id="inicio" class="hero">
+    <!-- DESTAQUE PRINCIPAL -->
+    <section class="hero" id="inicio">
       <div class="container hero-conteudo">
-        <span class="etiqueta-hero">DEPÓSITO CUMARU</span>
+        <div class="hero-texto">
+          <span class="etiqueta">
+            <span class="ponto-verde"></span>
+            DEPÓSITO CUMARU
+          </span>
 
-        <h1>Sua bebida para cada momento.</h1>
+          <h1>Sua bebida para <span>cada momento.</span></h1>
 
-        <p>
-          Escolha seus produtos, monte seu pedido e envie
-          diretamente pelo WhatsApp.
-        </p>
-
-        <a href="#produtos" class="botao-principal">
-          Ver produtos
-        </a>
-      </div>
-    </section>
-
-    <section id="aviso-evento" class="aviso-evento" hidden>
-      <div class="container">
-        <p id="texto-aviso-evento"></p>
-      </div>
-    </section>
-
-    <section id="produtos" class="secao-produtos">
-      <div class="container">
-
-        <div class="titulo-secao">
-          <span class="subtitulo">NOSSO CATÁLOGO</span>
-          <h2>Escolha seus produtos</h2>
           <p>
-            Confira as opções disponíveis e adicione ao seu pedido.
+            Escolha seus produtos, monte seu pedido e envie
+            diretamente pelo WhatsApp.
           </p>
+
+          <a class="botao-principal" href="#produtos">
+            Ver produtos <span aria-hidden="true">→</span>
+          </a>
+
+          <div class="hero-beneficios">
+            <span>✓ Pedido fácil</span>
+            <span>✓ Atendimento pelo WhatsApp</span>
+          </div>
+        </div>
+
+        <div class="hero-imagem" aria-label="Depósito Cumaru">
+          <div class="hero-grafismo" aria-hidden="true">DC</div>
+          <div class="hero-selo">
+            <span>SEU DEPÓSITO</span>
+            <strong>CUMARU</strong>
+            <span>BEBIDAS E CONVENIÊNCIA</span>
+          </div>
+          <div class="hero-legenda">
+            <span>DEPÓSITO CUMARU</span>
+            <span>Seu pedido do seu jeito.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- INFORMAÇÕES -->
+    <section class="faixa-informacoes" aria-label="Vantagens">
+      <div class="container faixa-conteudo">
+        <div>
+          <span class="informacao-icone" aria-hidden="true">🍻</span>
+          <span>Variedade de bebidas</span>
+        </div>
+        <div>
+          <span class="informacao-icone" aria-hidden="true">🛒</span>
+          <span>Monte seu pedido</span>
+        </div>
+        <div>
+          <span class="informacao-icone" aria-hidden="true">📲</span>
+          <span>Peça pelo WhatsApp</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- CATEGORIAS -->
+    <section class="secao secao-categorias">
+      <div class="container">
+        <div class="titulo-secao">
+          <div>
+            <span class="sobretitulo">ENCONTRE O QUE PROCURA</span>
+            <h2>Explore as categorias</h2>
+          </div>
+          <p>Escolha sua categoria favorita.</p>
+        </div>
+
+        <div class="categorias-lista" id="lista-categorias"></div>
+      </div>
+    </section>
+
+    <!-- PRODUTOS -->
+    <section class="secao secao-produtos" id="produtos">
+      <div class="container">
+        <div class="titulo-secao">
+          <div>
+            <span class="sobretitulo">NOSSO CATÁLOGO</span>
+            <h2>Escolha seus produtos</h2>
+          </div>
+          <span class="quantidade-produtos" id="quantidade-produtos">
+            Confira as opções
+          </span>
         </div>
 
         <div class="ferramentas-produtos">
           <label class="campo-busca">
-            <span class="sr-only">Buscar produto</span>
+            <span aria-hidden="true">⌕</span>
             <input
-              id="buscar-produto"
               type="search"
-              placeholder="Buscar bebida, marca ou produto..."
-              autocomplete="off">
+              id="buscar-produto"
+              placeholder="Buscar produto..."
+              autocomplete="off"
+            >
           </label>
 
           <label class="campo-filtro">
             <span class="sr-only">Filtrar por categoria</span>
             <select id="filtro-categoria">
-              <option value="">Todas as categorias</option>
+              <option value="todas">Todas as categorias</option>
             </select>
           </label>
         </div>
 
-        <div
-          id="lista-categorias"
-          class="lista-categorias"
-          aria-label="Categorias de produtos">
-        </div>
-
-        <div
-          id="grade-produtos"
-          class="grade-produtos"
-          aria-live="polite">
-          <p class="mensagem-carregamento">
-            Carregando produtos...
-          </p>
-        </div>
-
         <p
-          id="mensagem-catalogo"
-          class="mensagem-catalogo"
+          class="mensagem-carregamento"
+          id="estado-produtos"
           role="status"
-          hidden>
-        </p>
+          hidden
+        ></p>
 
+        <div class="grade-produtos" id="grade-produtos">
+          <div class="estado-vazio">
+            <strong>Carregando produtos...</strong>
+            Aguarde um instante.
+          </div>
+        </div>
       </div>
     </section>
 
-    <section id="contato" class="secao-contato">
-      <div class="container contato-conteudo">
-
+    <!-- CHAMADA PARA PEDIDOS -->
+    <section class="secao-chamada" id="contato">
+      <div class="container chamada-conteudo">
         <div>
-          <span class="subtitulo">FAÇA SEU PEDIDO</span>
-          <h2>Pronto para pedir?</h2>
-          <p>
-            Monte seu carrinho e envie seu pedido pelo WhatsApp.
-          </p>
+          <span class="sobretitulo">É SÓ ESCOLHER</span>
+          <h2>Gostou? Monte seu pedido e fale com a gente.</h2>
+          <p>Finalize seu pedido diretamente pelo WhatsApp.</p>
         </div>
-
         <button
+          class="botao-principal botao-claro"
           id="abrir-carrinho-contato"
-          class="botao-principal"
-          type="button">
-          🛒 Montar meu pedido
+          type="button"
+        >
+          Meu pedido <span aria-hidden="true">→</span>
         </button>
-
       </div>
     </section>
   </main>
 
+  <!-- RODAPÉ -->
   <footer class="rodape">
     <div class="container rodape-conteudo">
-
-      <a
-        href="#inicio"
-        class="marca marca-rodape"
-        aria-label="Voltar ao início">
-
-        <img
-          src="assets/logo-cumaru.jpeg"
-          alt="Logo do Depósito Cumaru"
-          class="logo-oficial"
-          width="190"
-          height="72">
-      </a>
-
       <div class="rodape-info">
-        <p class="nome-rodape">Depósito Cumaru</p>
-
-        <p id="endereco-rodape"></p>
-
-        <a
-          id="link-whatsapp-rodape"
-          href="#"
-          target="_blank"
-          rel="noopener noreferrer">
-          Fale conosco pelo WhatsApp
-        </a>
+        <strong>DEPÓSITO CUMARU</strong>
+        <p id="endereco-rodape">Bebidas e conveniência.</p>
       </div>
 
-      <p class="copyright">
-        © <span id="ano-atual"></span> Depósito Cumaru.
-        Todos os direitos reservados.
-      </p>
+      <a
+        class="link-whatsapp"
+        id="link-whatsapp-rodape"
+        href="#contato"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        Fale pelo WhatsApp ↗
+      </a>
+    </div>
 
+    <div class="container rodape-final">
+      <span>© <span id="ano-atual"></span> Depósito Cumaru</span>
+      <span>Todos os direitos reservados.</span>
     </div>
   </footer>
 
-  <div
-    id="fundo-modal"
-    class="fundo-modal"
-    hidden>
-  </div>
+  <!-- FUNDO DO CARRINHO -->
+  <div class="fundo-modal" id="fundo-modal" hidden></div>
 
+  <!-- CARRINHO -->
   <aside
-    id="painel-carrinho"
     class="painel-carrinho"
+    id="painel-carrinho"
     role="dialog"
     aria-modal="true"
     aria-labelledby="titulo-carrinho"
     aria-hidden="true"
-    tabindex="-1">
-
-    <div class="cabecalho-carrinho">
+  >
+    <div class="carrinho-cabecalho">
       <div>
-        <span class="subtitulo">SEU PEDIDO</span>
+        <span class="sobretitulo">SEU PEDIDO</span>
         <h2 id="titulo-carrinho">Meu carrinho</h2>
       </div>
-
       <button
-        id="fechar-carrinho"
         class="botao-fechar"
+        id="fechar-carrinho"
         type="button"
-        aria-label="Fechar carrinho">
-        ×
-      </button>
+        aria-label="Fechar carrinho"
+      >×</button>
     </div>
 
-    <div
-      id="itens-carrinho"
-      class="itens-carrinho"
-      aria-live="polite">
-      <p>Seu carrinho está vazio.</p>
+    <div class="carrinho-itens" id="itens-carrinho">
+      <div class="carrinho-vazio">
+        <span aria-hidden="true">🛒</span>
+        <h3>Seu carrinho está vazio</h3>
+        <p>Adicione produtos para montar seu pedido.</p>
+      </div>
     </div>
 
-    <div class="resumo-carrinho">
-      <div class="linha-subtotal">
-        <span>Subtotal estimado</span>
+    <div class="carrinho-rodape">
+      <div class="linha-total">
+        <span>Subtotal</span>
         <strong id="subtotal-carrinho">R$ 0,00</strong>
       </div>
 
-      <p class="observacao-carrinho">
-        O valor final, a disponibilidade e a entrega serão
-        confirmados pelo depósito.
+      <p class="aviso-total">
+        O pedido será enviado pelo WhatsApp para confirmação.
       </p>
 
       <button
-        id="finalizar-pedido"
         class="botao-principal botao-finalizar"
-        type="button">
-        Finalizar pelo WhatsApp
+        id="finalizar-pedido"
+        type="button"
+      >
+        Finalizar pelo WhatsApp →
       </button>
     </div>
-
   </aside>
 
+  <!-- NOTIFICAÇÕES -->
   <div
-    id="notificacao"
     class="notificacao"
+    id="notificacao"
     role="status"
     aria-live="polite"
-    hidden>
-  </div>
+  ></div>
 
+  <script src="./script.js"></script>
 </body>
 </html>
