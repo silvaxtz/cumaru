@@ -11,19 +11,22 @@
           "id": "unidade",
           "nome": "Unidade",
           "quantidade": 1,
-          "preco": 2
+          "preco": 2.5,
+          "disponivel": true
         },
         {
           "id": "caixa-6",
           "nome": "Caixa com 6",
           "quantidade": 6,
-          "preco": 10
+          "preco": 15,
+          "disponivel": true
         },
         {
           "id": "caixa-12",
           "nome": "Caixa com 12",
           "quantidade": 12,
-          "preco": 18
+          "preco": 30,
+          "disponivel": true
         }
       ],
       "imagem": "",
@@ -42,13 +45,15 @@
           "id": "unidade",
           "nome": "Unidade",
           "quantidade": 1,
-          "preco": 9
+          "preco": 9,
+          "disponivel": true
         },
         {
           "id": "caixa-6",
           "nome": "Caixa com 6",
           "quantidade": 6,
-          "preco": 48
+          "preco": 48,
+          "disponivel": true
         }
       ],
       "imagem": "",
@@ -67,13 +72,15 @@
           "id": "unidade",
           "nome": "Unidade",
           "quantidade": 1,
-          "preco": 7.5
+          "preco": 7.5,
+          "disponivel": true
         },
         {
           "id": "caixa-6",
           "nome": "Caixa com 6",
           "quantidade": 6,
-          "preco": 42
+          "preco": 42,
+          "disponivel": true
         }
       ],
       "imagem": "",
@@ -92,19 +99,22 @@
           "id": "unidade",
           "nome": "Unidade",
           "quantidade": 1,
-          "preco": 4.5
+          "preco": 4.5,
+          "disponivel": true
         },
         {
           "id": "caixa-6",
           "nome": "Caixa com 6",
           "quantidade": 6,
-          "preco": 25
+          "preco": 25,
+          "disponivel": true
         },
         {
           "id": "caixa-12",
           "nome": "Caixa com 12",
           "quantidade": 12,
-          "preco": 48
+          "preco": 48,
+          "disponivel": true
         }
       ],
       "imagem": "",
@@ -123,13 +133,15 @@
           "id": "unidade",
           "nome": "Unidade",
           "quantidade": 1,
-          "preco": 6
+          "preco": 6,
+          "disponivel": true
         },
         {
           "id": "caixa-6",
           "nome": "Caixa com 6",
           "quantidade": 6,
-          "preco": 33
+          "preco": 33,
+          "disponivel": true
         }
       ],
       "imagem": "",
@@ -148,13 +160,15 @@
           "id": "unidade",
           "nome": "Unidade",
           "quantidade": 1,
-          "preco": 10
+          "preco": 10,
+          "disponivel": true
         },
         {
           "id": "caixa-6",
           "nome": "Caixa com 6",
           "quantidade": 6,
-          "preco": 55
+          "preco": 55,
+          "disponivel": true
         }
       ],
       "imagem": "",
@@ -173,7 +187,8 @@
           "id": "unidade",
           "nome": "Saco",
           "quantidade": 1,
-          "preco": 8
+          "preco": 8,
+          "disponivel": true
         }
       ],
       "imagem": "",
@@ -192,13 +207,15 @@
           "id": "unidade",
           "nome": "Unidade",
           "quantidade": 1,
-          "preco": 8.5
+          "preco": 8.5,
+          "disponivel": true
         },
         {
           "id": "caixa-6",
           "nome": "Caixa com 6",
           "quantidade": 6,
-          "preco": 48
+          "preco": 48,
+          "disponivel": true
         }
       ],
       "imagem": "",
@@ -217,7 +234,8 @@
           "id": "garrafa",
           "nome": "Garrafa",
           "quantidade": 1,
-          "preco": 45
+          "preco": 45,
+          "disponivel": true
         }
       ],
       "imagem": "",
@@ -236,13 +254,15 @@
           "id": "unidade",
           "nome": "Pacote",
           "quantidade": 1,
-          "preco": 15
+          "preco": 15,
+          "disponivel": true
         },
         {
           "id": "caixa-6",
           "nome": "Caixa com 6",
           "quantidade": 6,
-          "preco": 84
+          "preco": 84,
+          "disponivel": true
         }
       ],
       "imagem": "",
