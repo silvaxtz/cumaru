@@ -1,0 +1,71 @@
+
+{
+  "produtos": [
+    {
+      "id": "cerveja-exemplo",
+      "nome": "Cerveja Exemplo 350ml",
+      "categoria": "Cervejas",
+      "descricao": "Lata de 350ml",
+      "preco": 5.00,
+      "imagem": "",
+      "disponivel": true,
+      "destaque": true,
+      "aumentoEvento": null
+    },
+    {
+      "id": "cerveja-exemplo-600",
+      "nome": "Cerveja Exemplo 600ml",
+      "categoria": "Cervejas",
+      "descricao": "Garrafa de 600ml",
+      "preco": 9.00,
+      "imagem": "",
+      "disponivel": true,
+      "destaque": true,
+      "aumentoEvento": null
+    },
+    {
+      "id": "refrigerante-exemplo",
+      "nome": "Refrigerante Exemplo 2L",
+      "categoria": "Refrigerantes",
+      "descricao": "Garrafa de 2 litros",
+      "preco": 8.00,
+      "imagem": "",
+      "disponivel": true,
+      "destaque": false,
+      "aumentoEvento": null
+    },
+    {
+      "id": "energetico-exemplo",
+      "nome": "Energético Exemplo 473ml",
+      "categoria": "Energéticos",
+      "descricao": "Lata de 473ml",
+      "preco": 10.00,
+      "imagem": "",
+      "disponivel": true,
+      "destaque": false,
+      "aumentoEvento": null
+    },
+    {
+      "id": "agua-exemplo",
+      "nome": "Água Mineral 500ml",
+      "categoria": "Águas",
+      "descricao": "Garrafa de 500ml",
+      "preco": 2.00,
+      "imagem": "",
+      "disponivel": true,
+      "destaque": false,
+      "aumentoEvento": 0
+    },
+    {
+      "id": "gelo-exemplo",
+      "nome": "Saco de Gelo",
+      "categoria": "Gelo",
+      "descricao": "Consulte o tamanho disponível",
+      "preco": 8.00,
+      "imagem": "",
+      "disponivel": true,
+      "destaque": false,
+      "aumentoEvento": 0
+    }
+  ]
+}
