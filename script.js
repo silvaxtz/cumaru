@@ -1,10 +1,7 @@
 
 "use strict";
 
-/* ==========================================
-   DEPÓSITO CUMARU
-   Produtos, categorias, preços e carrinho
-========================================== */
+/* DEPÓSITO CUMARU — catálogo e pedidos */
 
 const ARQUIVOS = {
   produtos: "./produtos.json",
@@ -19,19 +16,29 @@ const CONFIG_PADRAO = {
   atualizacaoSegundos: 30,
   moeda: "BRL",
   mensagemEvento: "Preços especiais para o evento de hoje!",
-  mensagemWhatsApp: "Olá! Gostaria de fazer um pedido no Depósito Cumaru.",
   endereco: "",
   permitirProdutosIndisponiveisNoCarrinho: false
 };
 
+const ICONES = {
+  todas: '<path d="M3 7h18M5 7l1 13h12l1-13M9 7V5a3 3 0 0 1 6 0v2"/>',
+  cerveja: '<path d="M7 3h8l1 4-1 14H6L5 7zM16 8h3l1 2v5l-2 2h-3M8 10h5"/>',
+  refrigerante: '<path d="M9 3h6v3l2 3-1 12H8L7 9l2-3zM9 6h6M8 10h8M10 14h4"/>',
+  energetico: '<path d="m13 2-8 12h6l-1 8 9-13h-6z"/>',
+  destilado: '<path d="M9 3h6v4l3 4v10H6V11l3-4zM9 7h6M7 13h10"/>',
+  agua: '<path d="M12 2S5 10 5 15a7 7 0 0 0 14 0c0-5-7-13-7-13zM9 16a3 3 0 0 0 3 3"/>',
+  gelo: '<path d="m12 2 8 5v10l-8 5-8-5V7zM4 7l8 5 8-5M12 12v10M8 4.5l8 5M16 4.5l-8 5"/>',
+  outros: '<path d="M4 5h16v14H4zM8 9h8M8 13h5"/>'
+};
+
 const CATEGORIAS_PADRAO = [
-  { nome: "Cervejas", icone: "🍺" },
-  { nome: "Refrigerantes", icone: "🥤" },
-  { nome: "Energéticos", icone: "⚡" },
-  { nome: "Destilados", icone: "🥃" },
-  { nome: "Águas", icone: "💧" },
-  { nome: "Gelo", icone: "🧊" },
-  { nome: "Outros", icone: "🍹" }
+  { nome: "Cervejas", icone: "cerveja" },
+  { nome: "Refrigerantes", icone: "refrigerante" },
+  { nome: "Energéticos", icone: "energetico" },
+  { nome: "Destilados", icone: "destilado" },
+  { nome: "Águas", icone: "agua" },
+  { nome: "Gelo", icone: "gelo" },
+  { nome: "Outros", icone: "outros" }
 ];
 
 let produtos = [];
@@ -65,16 +72,16 @@ const elementos = {
   anoAtual: $("#ano-atual")
 };
 
-/* SEGURANÇA E FORMATAÇÃO */
+/* UTILITÁRIOS */
 
 function escaparHTML(valor) {
-  return String(valor ?? "").replace(/[&<>"']/g, (caractere) => ({
+  return String(valor ?? "").replace(/[&<>"']/g, (c) => ({
     "&": "&amp;",
     "<": "&lt;",
     ">": "&gt;",
     '"': "&quot;",
     "'": "&#39;"
-  })[caractere]);
+  })[c]);
 }
 
 function formatarDinheiro(valor) {
@@ -82,6 +89,30 @@ function formatarDinheiro(valor) {
     style: "currency",
     currency: configuracao.moeda || "BRL"
   }).format(valor);
+}
+
+function iconeSVG(nome) {
+  const desenho = ICONES[nome] || ICONES.outros;
+
+  return `
+    <svg viewBox="0 0 24 24"
+         aria-hidden="true"
+         fill="none"
+         stroke="currentColor"
+         stroke-width="1.6"
+         stroke-linecap="round"
+         stroke-linejoin="round">
+      ${desenho}
+    </svg>
+  `;
+}
+
+function iconeCategoria(nome) {
+  const categoria = CATEGORIAS_PADRAO.find(
+    (item) => item.nome === nome
+  );
+
+  return iconeSVG(categoria?.icone || "outros");
 }
 
 function notificar(mensagem) {
@@ -99,9 +130,11 @@ function notificar(mensagem) {
 
 async function buscarJSON(caminho) {
   const separador = caminho.includes("?") ? "&" : "?";
-  const url = `${caminho}${separador}_=${Date.now()}`;
 
-  const resposta = await fetch(url, { cache: "no-store" });
+  const resposta = await fetch(
+    `${caminho}${separador}_=${Date.now()}`,
+    { cache: "no-store" }
+  );
 
   if (!resposta.ok) {
     throw new Error(`Não foi possível carregar ${caminho}`);
@@ -110,7 +143,7 @@ async function buscarJSON(caminho) {
   return resposta.json();
 }
 
-/* CONFIGURAÇÕES */
+/* VALIDAÇÃO */
 
 function validarConfiguracao(dados) {
   if (!dados || typeof dados !== "object" || Array.isArray(dados)) {
@@ -140,73 +173,61 @@ function validarConfiguracao(dados) {
 
 function validarProdutos(dados) {
   if (!dados || !Array.isArray(dados.produtos)) {
-    throw new Error(
-      "O arquivo produtos.json precisa conter uma lista chamada produtos."
-    );
+    throw new Error("O arquivo produtos.json não contém uma lista válida.");
   }
 
   const ids = new Set();
 
-  return dados.produtos
-    .filter((produto) => {
-      if (!produto || typeof produto !== "object") return false;
+  return dados.produtos.filter((produto) => {
+    if (!produto || typeof produto !== "object") return false;
 
-      const id = String(produto.id || "").trim();
-      const nome = String(produto.nome || "").trim();
-      const preco = Number(produto.preco);
+    const id = String(produto.id || "").trim();
+    const nome = String(produto.nome || "").trim();
+    const preco = Number(produto.preco);
 
-      if (
-        !id ||
-        !nome ||
-        !Number.isFinite(preco) ||
-        preco < 0 ||
-        ids.has(id)
-      ) {
-        console.warn("Produto ignorado por dados inválidos:", produto);
-        return false;
-      }
+    if (!id || !nome || !Number.isFinite(preco) || preco < 0 || ids.has(id)) {
+      console.warn("Produto ignorado por dados inválidos:", produto);
+      return false;
+    }
 
-      ids.add(id);
-      return true;
-    })
-    .map((produto) => ({
-      ...produto,
-      id: String(produto.id),
-      nome: String(produto.nome),
-      categoria: String(produto.categoria || "Outros"),
-      descricao: String(produto.descricao || ""),
-      preco: Number(produto.preco),
-      imagem: String(produto.imagem || ""),
-      disponivel: produto.disponivel !== false,
-      destaque: produto.destaque === true,
-      aumentoEvento:
-        produto.aumentoEvento === null ||
-        produto.aumentoEvento === undefined ||
-        produto.aumentoEvento === ""
-          ? null
-          : Number(produto.aumentoEvento)
-    }));
+    ids.add(id);
+    return true;
+  }).map((produto) => ({
+    ...produto,
+    id: String(produto.id),
+    nome: String(produto.nome),
+    categoria: String(produto.categoria || "Outros"),
+    descricao: String(produto.descricao || ""),
+    preco: Number(produto.preco),
+    imagem: String(produto.imagem || ""),
+    disponivel: produto.disponivel !== false,
+    destaque: produto.destaque === true,
+    aumentoEvento:
+      produto.aumentoEvento === null ||
+      produto.aumentoEvento === undefined ||
+      produto.aumentoEvento === ""
+        ? null
+        : Number(produto.aumentoEvento)
+  }));
 }
 
 /* PREÇOS */
 
 function obterPreco(produto) {
-  const precoOriginal = Number(produto.preco);
+  const original = Number(produto.preco);
 
-  if (!configuracao.modoEvento) {
-    return precoOriginal;
-  }
+  if (!configuracao.modoEvento) return original;
 
   let percentual = configuracao.aumentoGeralPercentual;
 
   if (produto.aumentoEvento !== null) {
-    percentual = Number.isFinite(produto.aumentoEvento)
-      ? Math.max(0, Math.min(500, produto.aumentoEvento))
-      : percentual;
+    if (Number.isFinite(produto.aumentoEvento)) {
+      percentual = Math.max(0, Math.min(500, produto.aumentoEvento));
+    }
   }
 
   return Math.round(
-    (precoOriginal * (1 + percentual / 100) + Number.EPSILON) * 100
+    (original * (1 + percentual / 100) + Number.EPSILON) * 100
   ) / 100;
 }
 
@@ -230,31 +251,28 @@ function obterSubtotal() {
   for (const [id, quantidade] of carrinho.entries()) {
     const produto = obterProduto(id);
 
-    if (produto) {
-      total += obterPreco(produto) * quantidade;
-    }
+    if (produto) total += obterPreco(produto) * quantidade;
   }
 
   return Math.round((total + Number.EPSILON) * 100) / 100;
 }
 
-/* CATEGORIAS */
+/* CATEGORIAS SEM EMOJIS */
 
 function obterCategorias() {
-  const existentes = [
-    ...new Set(produtos.map((produto) => produto.categoria))
-  ];
+  const existentes = [...new Set(
+    produtos.map((produto) => produto.categoria)
+  )];
 
-  const conhecidas = CATEGORIAS_PADRAO.filter((categoria) =>
-    existentes.includes(categoria.nome)
+  const conhecidas = CATEGORIAS_PADRAO.filter(
+    (categoria) => existentes.includes(categoria.nome)
   );
 
   const adicionais = existentes
-    .filter(
-      (nome) =>
-        !CATEGORIAS_PADRAO.some((categoria) => categoria.nome === nome)
-    )
-    .map((nome) => ({ nome, icone: "🍹" }));
+    .filter((nome) => !CATEGORIAS_PADRAO.some(
+      (categoria) => categoria.nome === nome
+    ))
+    .map((nome) => ({ nome, icone: "outros" }));
 
   return [...conhecidas, ...adicionais];
 }
@@ -270,60 +288,45 @@ function renderizarCategorias() {
         class="categoria-card ${categoriaAtiva === "todas" ? "ativa" : ""}"
         type="button"
         data-categoria="todas">
-        <span class="categoria-icone">🛍️</span>
-        <strong>Todas as bebidas</strong>
+        <span class="categoria-icone">${iconeSVG("todas")}</span>
+        <strong>Todos os produtos</strong>
       </button>
     `,
-    ...categorias.map(
-      (categoria) => `
-        <button
-          class="categoria-card ${
-            categoriaAtiva === categoria.nome ? "ativa" : ""
-          }"
-          type="button"
-          data-categoria="${escaparHTML(categoria.nome)}">
-          <span class="categoria-icone">${escaparHTML(categoria.icone)}</span>
-          <strong>${escaparHTML(categoria.nome)}</strong>
-        </button>
-      `
-    )
+    ...categorias.map((categoria) => `
+      <button
+        class="categoria-card ${categoriaAtiva === categoria.nome ? "ativa" : ""}"
+        type="button"
+        data-categoria="${escaparHTML(categoria.nome)}">
+        <span class="categoria-icone">${iconeCategoria(categoria.nome)}</span>
+        <strong>${escaparHTML(categoria.nome)}</strong>
+      </button>
+    `)
   ].join("");
 
   elementos.filtro.innerHTML = `
     <option value="todas">Todas as categorias</option>
-    ${categorias
-      .map(
-        (categoria) => `
-          <option value="${escaparHTML(categoria.nome)}">
-            ${escaparHTML(categoria.nome)}
-          </option>
-        `
-      )
-      .join("")}
+    ${categorias.map((categoria) => `
+      <option value="${escaparHTML(categoria.nome)}">
+        ${escaparHTML(categoria.nome)}
+      </option>
+    `).join("")}
   `;
 
   elementos.filtro.value = categoriaAtiva;
 }
 
-/* LISTAGEM DE PRODUTOS */
+/* PRODUTOS */
 
-function produtoCorrespondeBusca(produto) {
+function produtoCorrespondeFiltro(produto) {
   const texto = [
     produto.nome,
     produto.categoria,
     produto.descricao
-  ]
-    .join(" ")
-    .toLocaleLowerCase("pt-BR");
+  ].join(" ").toLocaleLowerCase("pt-BR");
 
-  return texto.includes(buscaAtual.toLocaleLowerCase("pt-BR"));
-}
-
-function produtoCorrespondeFiltro(produto) {
   return (
-    (categoriaAtiva === "todas" ||
-      produto.categoria === categoriaAtiva) &&
-    produtoCorrespondeBusca(produto)
+    (categoriaAtiva === "todas" || produto.categoria === categoriaAtiva) &&
+    texto.includes(buscaAtual.toLocaleLowerCase("pt-BR"))
   );
 }
 
@@ -338,8 +341,8 @@ function renderizarProdutos() {
   }
 
   if (elementos.estadoProdutos) {
-    elementos.estadoProdutos.textContent = "";
     elementos.estadoProdutos.hidden = true;
+    elementos.estadoProdutos.textContent = "";
   }
 
   if (lista.length === 0) {
@@ -352,71 +355,67 @@ function renderizarProdutos() {
     return;
   }
 
-  elementos.gradeProdutos.innerHTML = lista
-    .map((produto) => {
-      const preco = obterPreco(produto);
+  elementos.gradeProdutos.innerHTML = lista.map((produto) => {
+    const preco = obterPreco(produto);
 
-      const indisponivel =
-        !produto.disponivel &&
-        !configuracao.permitirProdutosIndisponiveisNoCarrinho;
+    const indisponivel =
+      !produto.disponivel &&
+      !configuracao.permitirProdutosIndisponiveisNoCarrinho;
 
-      const selo = !produto.disponivel
-        ? '<span class="etiqueta-indisponivel">Indisponível</span>'
-        : produto.destaque
-          ? '<span class="etiqueta-oferta">Destaque</span>'
-          : "";
+    const selo = !produto.disponivel
+      ? '<span class="etiqueta-indisponivel">Indisponível</span>'
+      : produto.destaque
+        ? '<span class="etiqueta-oferta">Destaque</span>'
+        : "";
 
-      const imagem = produto.imagem
-        ? `
-          <img
-            src="${escaparHTML(produto.imagem)}"
-            alt="${escaparHTML(produto.nome)}"
-            loading="lazy"
-            onerror="this.hidden=true;this.nextElementSibling.hidden=false">
-          <span class="produto-placeholder" hidden>🍹</span>
-        `
-        : '<span class="produto-placeholder">🍹</span>';
+    const imagem = produto.imagem
+      ? `
+        <img
+          src="${escaparHTML(produto.imagem)}"
+          alt="${escaparHTML(produto.nome)}"
+          loading="lazy"
+          onerror="this.hidden=true;this.nextElementSibling.hidden=false">
+        <span class="produto-placeholder" hidden>C</span>
+      `
+      : '<span class="produto-placeholder">C</span>';
 
-      return `
-        <article class="produto-card">
-          <div class="produto-imagem">
-            ${selo}
-            ${imagem}
-          </div>
+    return `
+      <article class="produto-card">
+        <div class="produto-imagem">
+          ${selo}
+          ${imagem}
+        </div>
 
-          <div class="produto-info">
-            <span class="produto-categoria">
-              ${escaparHTML(produto.categoria)}
-            </span>
+        <div class="produto-info">
+          <span class="produto-categoria">
+            ${escaparHTML(produto.categoria)}
+          </span>
 
-            <h3>${escaparHTML(produto.nome)}</h3>
+          <h3>${escaparHTML(produto.nome)}</h3>
 
-            <p class="produto-descricao">
-              ${escaparHTML(produto.descricao)}
-            </p>
+          <p class="produto-descricao">
+            ${escaparHTML(produto.descricao)}
+          </p>
 
-            <div class="produto-rodape">
-              <div class="produto-preco">
-                <small>
-                  ${configuracao.modoEvento ? "Preço de evento" : "Preço"}
-                </small>
-                <strong>${formatarDinheiro(preco)}</strong>
-              </div>
-
-              <button
-                type="button"
-                class="botao-adicionar"
-                data-adicionar="${escaparHTML(produto.id)}"
-                aria-label="Adicionar ${escaparHTML(produto.nome)}"
-                ${indisponivel ? "disabled" : ""}>
-                +
-              </button>
+          <div class="produto-rodape">
+            <div class="produto-preco">
+              <small>${configuracao.modoEvento ? "Preço de evento" : "Preço"}</small>
+              <strong>${formatarDinheiro(preco)}</strong>
             </div>
+
+            <button
+              type="button"
+              class="botao-adicionar"
+              data-adicionar="${escaparHTML(produto.id)}"
+              aria-label="Adicionar ${escaparHTML(produto.nome)}"
+              ${indisponivel ? "disabled" : ""}>
+              +
+            </button>
           </div>
-        </article>
-      `;
-    })
-    .join("");
+        </div>
+      </article>
+    `;
+  }).join("");
 }
 
 /* CARRINHO */
@@ -443,8 +442,7 @@ function adicionarProduto(id) {
 }
 
 function alterarQuantidade(id, delta) {
-  const atual = carrinho.get(id) || 0;
-  const nova = atual + delta;
+  const nova = (carrinho.get(id) || 0) + delta;
 
   if (nova <= 0) {
     carrinho.delete(id);
@@ -458,10 +456,8 @@ function alterarQuantidade(id, delta) {
 
 function removerProduto(id) {
   carrinho.delete(id);
-
   renderizarProdutos();
   renderizarCarrinho();
-
   notificar("Produto removido do pedido.");
 }
 
@@ -483,9 +479,8 @@ function renderizarCarrinho() {
   if (carrinho.size === 0) {
     elementos.itensCarrinho.innerHTML = `
       <div class="carrinho-vazio">
-        <span>🛒</span>
         <h3>Seu carrinho está vazio</h3>
-        <p>Adicione algumas bebidas para começar.</p>
+        <p>Adicione produtos para montar seu pedido.</p>
       </div>
     `;
     return;
@@ -494,7 +489,6 @@ function renderizarCarrinho() {
   elementos.itensCarrinho.innerHTML = [...carrinho.entries()]
     .map(([id, quantidade]) => {
       const produto = obterProduto(id);
-
       if (!produto) return "";
 
       return `
@@ -531,11 +525,10 @@ function renderizarCarrinho() {
           </button>
         </article>
       `;
-    })
-    .join("");
+    }).join("");
 }
 
-/* ABRIR E FECHAR O CARRINHO */
+/* PAINEL LATERAL */
 
 function abrirCarrinho() {
   elementos.painelCarrinho?.classList.add("aberto");
@@ -562,7 +555,7 @@ function fecharCarrinho() {
   document.body.classList.remove("modal-aberto");
 }
 
-/* FINALIZAR PELO WHATSAPP */
+/* WHATSAPP */
 
 function finalizarPedido() {
   if (carrinho.size === 0) {
@@ -583,7 +576,6 @@ function finalizarPedido() {
 
   for (const [id, quantidade] of carrinho.entries()) {
     const produto = obterProduto(id);
-
     if (!produto) continue;
 
     if (
@@ -594,10 +586,8 @@ function finalizarPedido() {
       return;
     }
 
-    const totalProduto = obterPreco(produto) * quantidade;
-
     linhas.push(
-      `${quantidade}x ${produto.nome} — ${formatarDinheiro(totalProduto)}`
+      `${quantidade}x ${produto.nome} — ${formatarDinheiro(obterPreco(produto) * quantidade)}`
     );
   }
 
@@ -609,7 +599,7 @@ function finalizarPedido() {
   }
 
   linhas.push("");
-  linhas.push("Por favor, confirme a disponibilidade e a entrega.");
+  linhas.push("Por favor, confirme a disponibilidade, entrega e pagamento.");
 
   const url =
     `https://wa.me/${configuracao.whatsapp}?text=` +
@@ -618,7 +608,7 @@ function finalizarPedido() {
   window.open(url, "_blank", "noopener,noreferrer");
 }
 
-/* ATUALIZAR CONFIGURAÇÃO E PRODUTOS */
+/* ATUALIZAÇÃO AUTOMÁTICA */
 
 async function atualizarConfiguracao() {
   try {
@@ -626,9 +616,7 @@ async function atualizarConfiguracao() {
       await buscarJSON(ARQUIVOS.config)
     );
 
-    const mudou =
-      JSON.stringify(nova) !== JSON.stringify(configuracao);
-
+    const mudou = JSON.stringify(nova) !== JSON.stringify(configuracao);
     configuracao = nova;
 
     if (elementos.avisoEvento) {
@@ -646,7 +634,7 @@ async function atualizarConfiguracao() {
         elementos.linkWhatsappRodape.href =
           `https://wa.me/${configuracao.whatsapp}`;
       } else {
-        elementos.linkWhatsappRodape.removeAttribute("href");
+        elementos.linkWhatsappRodape.href = "#contato";
       }
     }
 
@@ -663,24 +651,19 @@ async function atualizarConfiguracao() {
 
     return true;
   } catch (erro) {
-    console.error("Erro ao atualizar configurações:", erro);
+    console.error("Erro ao atualizar configuração:", erro);
     return false;
   }
 }
 
 async function atualizarProdutos() {
   try {
-    const dados = validarProdutos(
+    produtos = validarProdutos(
       await buscarJSON(ARQUIVOS.produtos)
     );
 
-    produtos = dados;
-
-    // Remove do carrinho produtos que foram excluídos do catálogo.
     for (const id of carrinho.keys()) {
-      if (!obterProduto(id)) {
-        carrinho.delete(id);
-      }
+      if (!obterProduto(id)) carrinho.delete(id);
     }
 
     renderizarCategorias();
@@ -714,7 +697,7 @@ function iniciarAtualizacaoAutomatica() {
   }, configuracao.atualizacaoSegundos * 1000);
 }
 
-/* EVENTOS DA PÁGINA */
+/* EVENTOS */
 
 function configurarEventos() {
   elementos.buscar?.addEventListener("input", (evento) => {
@@ -730,7 +713,6 @@ function configurarEventos() {
 
   elementos.listaCategorias?.addEventListener("click", (evento) => {
     const botao = evento.target.closest("[data-categoria]");
-
     if (!botao) return;
 
     categoriaAtiva = botao.dataset.categoria;
@@ -746,10 +728,7 @@ function configurarEventos() {
 
   elementos.gradeProdutos?.addEventListener("click", (evento) => {
     const botao = evento.target.closest("[data-adicionar]");
-
-    if (botao) {
-      adicionarProduto(botao.dataset.adicionar);
-    }
+    if (botao) adicionarProduto(botao.dataset.adicionar);
   });
 
   elementos.itensCarrinho?.addEventListener("click", (evento) => {
@@ -774,9 +753,7 @@ function configurarEventos() {
   $("#abrir-carrinho-contato")?.addEventListener("click", abrirCarrinho);
 
   document.addEventListener("keydown", (evento) => {
-    if (evento.key === "Escape") {
-      fecharCarrinho();
-    }
+    if (evento.key === "Escape") fecharCarrinho();
   });
 
   if (elementos.anoAtual) {
