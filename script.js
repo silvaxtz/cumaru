@@ -1,3 +1,4 @@
+
 "use strict";
 
 /* DEPÓSITO CUMARU — catálogo, embalagens e pedidos */
@@ -494,10 +495,12 @@ function renderizarProdutos() {
     );
 
     const primeiraDisponivel = embalagensValidas[0];
-
     const precoInicial = primeiraDisponivel
       ? obterPrecoEmbalagem(produto, primeiraDisponivel)
       : null;
+
+    // Só mostra o seletor quando há mais de uma embalagem disponível.
+    const mostrarSeletor = embalagensValidas.length > 1;
 
     const opcoesEmbalagem = produto.embalagens.map((embalagem) => {
       const semPreco = embalagem.preco === null;
@@ -540,15 +543,21 @@ function renderizarProdutos() {
             ${escaparHTML(produto.descricao)}
           </p>
 
-          <label class="produto-embalagem">
-            <span>Escolha a embalagem</span>
-            <select
-              class="seletor-embalagem"
-              data-embalagem-produto="${escaparHTML(produto.id)}"
-              ${embalagensValidas.length === 0 || indisponivel ? "disabled" : ""}>
-              ${opcoesEmbalagem}
-            </select>
-          </label>
+          ${
+            mostrarSeletor
+              ? `
+                <label class="produto-embalagem">
+                  <span>Escolha a embalagem</span>
+                  <select
+                    class="seletor-embalagem"
+                    data-embalagem-produto="${escaparHTML(produto.id)}"
+                    ${indisponivel ? "disabled" : ""}>
+                    ${opcoesEmbalagem}
+                  </select>
+                </label>
+              `
+              : ""
+          }
 
           <div class="produto-rodape">
             <div class="produto-preco">
@@ -556,9 +565,11 @@ function renderizarProdutos() {
                 ${configuracao.modoEvento ? "Preço de evento" : "Preço"}
               </small>
               <strong data-preco-produto="${escaparHTML(produto.id)}">
-                ${precoInicial === null
-                  ? "Preço a consultar"
-                  : formatarDinheiro(precoInicial)}
+                ${
+                  precoInicial === null
+                    ? "Preço a consultar"
+                    : formatarDinheiro(precoInicial)
+                }
               </strong>
             </div>
 
@@ -991,16 +1002,29 @@ function configurarEventos() {
 
     const produtoId = botao.dataset.adicionar;
 
+    const produto = obterProduto(produtoId);
+    if (!produto) return;
+
     const seletor = elementos.gradeProdutos.querySelector(
       `[data-embalagem-produto="${CSS.escape(produtoId)}"]`
     );
 
-    if (!seletor || !seletor.value) {
-      notificar("Escolha uma embalagem com preço cadastrado.");
+    // Se houver seletor, usa a embalagem escolhida.
+    // Se não houver, adiciona a única embalagem disponível.
+    const embalagemId = seletor
+      ? seletor.value
+      : produto.embalagens.find(
+          (embalagem) =>
+            embalagem.preco !== null &&
+            embalagem.disponivel
+        )?.id;
+
+    if (!embalagemId) {
+      notificar("Nenhuma embalagem com preço disponível.");
       return;
     }
 
-    adicionarProduto(produtoId, seletor.value);
+    adicionarProduto(produtoId, embalagemId);
   });
 
   elementos.itensCarrinho?.addEventListener("click", (evento) => {
