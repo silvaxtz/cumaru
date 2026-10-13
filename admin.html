@@ -83,6 +83,7 @@ $("entrar").onclick = async () => {
       body: JSON.stringify({ senha: $("senha").value })
     });
     token = r.token;
+    console.log("Login aceito:", !!token);
     $("senha").value = "";
     await carregar();
     $("login").classList.add("hidden");
