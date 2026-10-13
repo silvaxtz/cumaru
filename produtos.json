@@ -7,6 +7,26 @@
       "categoria": "Cervejas",
       "descricao": "Lata de 350ml",
       "preco": 5.00,
+      "embalagens": [
+        {
+          "id": "unidade",
+          "nome": "Unidade",
+          "quantidade": 1,
+          "preco": 5.00
+        },
+        {
+          "id": "caixa-6",
+          "nome": "Caixa com 6",
+          "quantidade": 6,
+          "preco": null
+        },
+        {
+          "id": "caixa-12",
+          "nome": "Caixa com 12",
+          "quantidade": 12,
+          "preco": null
+        }
+      ],
       "imagem": "",
       "disponivel": true,
       "destaque": true,
@@ -18,6 +38,26 @@
       "categoria": "Cervejas",
       "descricao": "Garrafa de 600ml",
       "preco": 9.00,
+      "embalagens": [
+        {
+          "id": "unidade",
+          "nome": "Unidade",
+          "quantidade": 1,
+          "preco": 9.00
+        },
+        {
+          "id": "caixa-6",
+          "nome": "Caixa com 6",
+          "quantidade": 6,
+          "preco": null
+        },
+        {
+          "id": "caixa-12",
+          "nome": "Caixa com 12",
+          "quantidade": 12,
+          "preco": null
+        }
+      ],
       "imagem": "",
       "disponivel": true,
       "destaque": true,
@@ -29,6 +69,26 @@
       "categoria": "Refrigerantes",
       "descricao": "Garrafa de 2 litros",
       "preco": 8.00,
+      "embalagens": [
+        {
+          "id": "unidade",
+          "nome": "Unidade",
+          "quantidade": 1,
+          "preco": 8.00
+        },
+        {
+          "id": "caixa-6",
+          "nome": "Caixa com 6",
+          "quantidade": 6,
+          "preco": null
+        },
+        {
+          "id": "caixa-12",
+          "nome": "Caixa com 12",
+          "quantidade": 12,
+          "preco": null
+        }
+      ],
       "imagem": "",
       "disponivel": true,
       "destaque": false,
@@ -40,6 +100,26 @@
       "categoria": "Energéticos",
       "descricao": "Lata de 473ml",
       "preco": 10.00,
+      "embalagens": [
+        {
+          "id": "unidade",
+          "nome": "Unidade",
+          "quantidade": 1,
+          "preco": 10.00
+        },
+        {
+          "id": "caixa-6",
+          "nome": "Caixa com 6",
+          "quantidade": 6,
+          "preco": null
+        },
+        {
+          "id": "caixa-12",
+          "nome": "Caixa com 12",
+          "quantidade": 12,
+          "preco": null
+        }
+      ],
       "imagem": "",
       "disponivel": true,
       "destaque": false,
@@ -51,6 +131,14 @@
       "categoria": "Águas",
       "descricao": "Garrafa de 500ml",
       "preco": 2.00,
+      "embalagens": [
+        {
+          "id": "unidade",
+          "nome": "Unidade",
+          "quantidade": 1,
+          "preco": 2.00
+        }
+      ],
       "imagem": "",
       "disponivel": true,
       "destaque": false,
@@ -62,6 +150,14 @@
       "categoria": "Gelo",
       "descricao": "Consulte o tamanho disponível",
       "preco": 8.00,
+      "embalagens": [
+        {
+          "id": "unidade",
+          "nome": "Saco",
+          "quantidade": 1,
+          "preco": 8.00
+        }
+      ],
       "imagem": "",
       "disponivel": true,
       "destaque": false,
