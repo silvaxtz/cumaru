@@ -1,0 +1,13 @@
+
+{
+  "nomeDeposito": "Depósito Cumaru",
+  "whatsapp": "5583986027214",
+  "modoEvento": false,
+  "aumentoGeralPercentual": 20,
+  "atualizacaoSegundos": 30,
+  "moeda": "BRL",
+  "mensagemEvento": "Preços especiais para o evento de hoje!",
+  "mensagemWhatsApp": "Olá! Gostaria de fazer um pedido no Depósito Cumaru.",
+  "endereco": "Rua João Pinto da Silva, 224, Barra de São Miguel - PB",
+  "permitirProdutosIndisponiveisNoCarrinho": false
+}
