@@ -4,7 +4,7 @@
     {
       "id": "agua-exemplo",
       "nome": "Água Mineral 500ml",
-      "categoria": "Águas",
+      "categoria": "Águas e Sucos",
       "descricao": "Garrafa de 500ml",
       "preco": 2.00,
       "embalagens": [
@@ -110,7 +110,7 @@
     {
       "id": "suco-uva-1l",
       "nome": "Suco de Uva 1L",
-      "categoria": "Sucos",
+      "categoria": "Águas e Sucos",
       "descricao": "Embalagem de 1 litro",
       "preco": 8.50,
       "embalagens": [
