@@ -1,4 +1,3 @@
-
 "use strict";
 
 /* DEPÓSITO CUMARU — catálogo, embalagens e pedidos */
@@ -95,36 +94,25 @@ function formatarDinheiro(valor) {
 
 function iconeSVG(nome) {
   const desenho = ICONES[nome] || ICONES.outros;
-
   return `
-    <svg viewBox="0 0 24 24"
-         aria-hidden="true"
-         fill="none"
-         stroke="currentColor"
-         stroke-width="1.6"
-         stroke-linecap="round"
-         stroke-linejoin="round">
+    <svg viewBox="0 0 24 24" aria-hidden="true"
+         fill="none" stroke="currentColor" stroke-width="1.6"
+         stroke-linecap="round" stroke-linejoin="round">
       ${desenho}
     </svg>
   `;
 }
 
 function iconeCategoria(nome) {
-  const categoria = CATEGORIAS_PADRAO.find(
-    (item) => item.nome === nome
-  );
-
+  const categoria = CATEGORIAS_PADRAO.find((item) => item.nome === nome);
   return iconeSVG(categoria?.icone || "outros");
 }
 
 function notificar(mensagem) {
   if (!elementos.notificacao) return;
-
   elementos.notificacao.textContent = mensagem;
   elementos.notificacao.classList.add("visivel");
-
   clearTimeout(timerNotificacao);
-
   timerNotificacao = setTimeout(() => {
     elementos.notificacao.classList.remove("visivel");
   }, 2800);
@@ -132,14 +120,13 @@ function notificar(mensagem) {
 
 async function buscarJSON(caminho) {
   const separador = caminho.includes("?") ? "&" : "?";
-
   const resposta = await fetch(
     `${caminho}${separador}_=${Date.now()}`,
     { cache: "no-store" }
   );
 
   if (!resposta.ok) {
-    throw new Error(`Não foi possível carregar ${caminho}`);
+    throw new Error(`Não foi possível carregar ${caminho} (HTTP ${resposta.status})`);
   }
 
   return resposta.json();
@@ -158,17 +145,13 @@ function validarConfiguracao(dados) {
   return {
     ...CONFIG_PADRAO,
     ...dados,
-
     modoEvento: dados.modoEvento === true,
-
     aumentoGeralPercentual: Number.isFinite(percentual)
       ? Math.max(0, Math.min(500, percentual))
       : CONFIG_PADRAO.aumentoGeralPercentual,
-
     atualizacaoSegundos: Number.isFinite(intervalo)
       ? Math.max(10, Math.min(3600, intervalo))
       : CONFIG_PADRAO.atualizacaoSegundos,
-
     whatsapp: String(dados.whatsapp || "").replace(/\D/g, "")
   };
 }
@@ -178,102 +161,107 @@ function validarConfiguracao(dados) {
 function prepararEmbalagens(produto) {
   if (Array.isArray(produto.embalagens) && produto.embalagens.length) {
     return produto.embalagens
-      .filter((embalagem) =>
-        embalagem && typeof embalagem === "object"
-      )
+      .filter((embalagem) => embalagem && typeof embalagem === "object")
       .map((embalagem, indice) => {
         const informado = embalagem.preco;
-
-        const preco = informado === null ||
-          informado === undefined ||
-          informado === ""
+        const preco = informado === null || informado === undefined || informado === ""
           ? null
           : Number(informado);
 
-        const precoValido = preco !== null &&
-          Number.isFinite(preco) &&
-          preco >= 0;
+        const precoValido = preco !== null && Number.isFinite(preco) && preco >= 0;
 
         return {
           id: String(embalagem.id || `embalagem-${indice + 1}`),
           nome: String(embalagem.nome || "Unidade"),
-          quantidade: Math.max(
-            1,
-            Number(embalagem.quantidade) || 1
-          ),
+          quantidade: Math.max(1, Number(embalagem.quantidade) || 1),
           preco: precoValido ? preco : null,
           disponivel: precoValido && embalagem.disponivel !== false
         };
       });
   }
 
-  const preco = Number(produto.preco);
-  const valido = Number.isFinite(preco) && preco >= 0;
+  const informado = produto.preco;
+  const preco = informado === null || informado === undefined || informado === ""
+    ? null
+    : Number(informado);
+  const valido = preco !== null && Number.isFinite(preco) && preco >= 0;
 
   return [{
     id: "unidade",
     nome: "Unidade",
     quantidade: 1,
     preco: valido ? preco : null,
-    disponivel: valido
+    disponivel: valido && produto.disponivel !== false
   }];
 }
 
 function validarProdutos(dados) {
-  if (!dados || !Array.isArray(dados.produtos)) {
+  // Aceita tanto {"produtos": [...]} quanto [...].
+  const lista = Array.isArray(dados)
+    ? dados
+    : dados && Array.isArray(dados.produtos)
+      ? dados.produtos
+      : null;
+
+  if (!lista) {
     throw new Error(
-      "O arquivo produtos.json não contém uma lista válida."
+      "Formato inválido no produtos.json: esperado uma lista ou um objeto com a propriedade produtos."
     );
   }
 
   const ids = new Set();
 
-  return dados.produtos.filter((produto) => {
-    if (!produto || typeof produto !== "object") return false;
+  return lista.filter((produto) => {
+    if (!produto || typeof produto !== "object" || Array.isArray(produto)) {
+      return false;
+    }
 
     const id = String(produto.id || "").trim();
     const nome = String(produto.nome || "").trim();
-    const preco = Number(produto.preco);
 
-    if (
-      !id ||
-      !nome ||
-      !Number.isFinite(preco) ||
-      preco < 0 ||
-      ids.has(id)
-    ) {
-      console.warn("Produto ignorado por dados inválidos:", produto);
+    if (!id || !nome || ids.has(id)) {
+      console.warn("Produto ignorado por dados inválidos ou ID repetido:", produto);
       return false;
     }
 
     ids.add(id);
     return true;
-  }).map((produto) => ({
-    ...produto,
-    id: String(produto.id),
-    nome: String(produto.nome),
-    categoria: String(produto.categoria || "Outros"),
-    descricao: String(produto.descricao || ""),
-    preco: Number(produto.preco),
-    embalagens: prepararEmbalagens(produto),
-    imagem: String(produto.imagem || ""),
-    disponivel: produto.disponivel !== false,
-    destaque: produto.destaque === true,
+  }).map((produto) => {
+    const embalagens = prepararEmbalagens(produto);
+    const precoInformado = produto.preco === null ||
+      produto.preco === undefined || produto.preco === ""
+      ? null
+      : Number(produto.preco);
 
-    aumentoEvento:
-      produto.aumentoEvento === null ||
-      produto.aumentoEvento === undefined ||
-      produto.aumentoEvento === ""
+    const precoValido = precoInformado !== null &&
+      Number.isFinite(precoInformado) && precoInformado >= 0;
+
+    const precoUnidade = embalagens.find((e) => e.id === "unidade")?.preco;
+    const precoEmbalagem = embalagens[0]?.preco;
+
+    return {
+      ...produto,
+      id: String(produto.id),
+      nome: String(produto.nome),
+      categoria: String(produto.categoria || "Outros"),
+      descricao: String(produto.descricao || ""),
+      preco: precoValido ? precoInformado : (precoUnidade ?? precoEmbalagem ?? 0),
+      embalagens,
+      imagem: String(produto.imagem || ""),
+      disponivel: produto.disponivel !== false,
+      destaque: produto.destaque === true,
+      aumentoEvento: produto.aumentoEvento === null ||
+        produto.aumentoEvento === undefined || produto.aumentoEvento === ""
         ? null
         : Number(produto.aumentoEvento)
-  }));
+    };
+  });
 }
 
 /* PREÇOS */
 
 function obterPrecoEmbalagem(produto, embalagem) {
   if (!embalagem || embalagem.preco === null) return null;
-
   const original = Number(embalagem.preco);
 
   if (!Number.isFinite(original)) return null;
@@ -281,26 +269,15 @@ function obterPrecoEmbalagem(produto, embalagem) {
 
   let percentual = configuracao.aumentoGeralPercentual;
 
-  if (
-    produto.aumentoEvento !== null &&
-    Number.isFinite(produto.aumentoEvento)
-  ) {
-    percentual = Math.max(
-      0,
-      Math.min(500, produto.aumentoEvento)
-    );
+  if (produto.aumentoEvento !== null && Number.isFinite(produto.aumentoEvento)) {
+    percentual = Math.max(0, Math.min(500, produto.aumentoEvento));
   }
 
-  return Math.round(
-    (original * (1 + percentual / 100) + Number.EPSILON) * 100
-  ) / 100;
+  return Math.round((original * (1 + percentual / 100) + Number.EPSILON) * 100) / 100;
 }
 
 function obterPreco(produto) {
-  const unidade = produto.embalagens.find(
-    (embalagem) => embalagem.id === "unidade"
-  ) || produto.embalagens[0];
-
+  const unidade = produto.embalagens.find((e) => e.id === "unidade") || produto.embalagens[0];
   return obterPrecoEmbalagem(produto, unidade) ?? produto.preco;
 }
 
@@ -309,9 +286,7 @@ function obterProduto(id) {
 }
 
 function obterEmbalagem(produto, embalagemId) {
-  return produto?.embalagens.find(
-    (embalagem) => embalagem.id === embalagemId
-  );
+  return produto?.embalagens.find((embalagem) => embalagem.id === embalagemId);
 }
 
 function criarChaveCarrinho(produtoId, embalagemId) {
@@ -320,14 +295,9 @@ function criarChaveCarrinho(produtoId, embalagemId) {
 
 function separarChaveCarrinho(chave) {
   const posicao = chave.lastIndexOf("::");
-
   if (posicao === -1) {
-    return {
-      produtoId: chave,
-      embalagemId: "unidade"
-    };
+    return { produtoId: chave, embalagemId: "unidade" };
   }
-
   return {
     produtoId: chave.slice(0, posicao),
     embalagemId: chave.slice(posicao + 2)
@@ -336,50 +306,30 @@ function separarChaveCarrinho(chave) {
 
 function obterQuantidadeCarrinho() {
   let total = 0;
-
-  for (const quantidade of carrinho.values()) {
-    total += quantidade;
-  }
-
+  for (const quantidade of carrinho.values()) total += quantidade;
   return total;
 }
 
 function obterSubtotal() {
   let total = 0;
-
   for (const [chave, quantidade] of carrinho.entries()) {
     const { produtoId, embalagemId } = separarChaveCarrinho(chave);
     const produto = obterProduto(produtoId);
     const embalagem = obterEmbalagem(produto, embalagemId);
     const preco = obterPrecoEmbalagem(produto, embalagem);
-
-    if (preco !== null) {
-      total += preco * quantidade;
-    }
+    if (preco !== null) total += preco * quantidade;
   }
-
   return Math.round((total + Number.EPSILON) * 100) / 100;
 }
 
 /* CATEGORIAS */
 
 function obterCategorias() {
-  const existentes = [
-    ...new Set(produtos.map((produto) => produto.categoria))
-  ];
-
-  const conhecidas = CATEGORIAS_PADRAO.filter(
-    (categoria) => existentes.includes(categoria.nome)
-  );
-
+  const existentes = [...new Set(produtos.map((produto) => produto.categoria))];
+  const conhecidas = CATEGORIAS_PADRAO;
   const adicionais = existentes
-    .filter((nome) => !CATEGORIAS_PADRAO.some(
-      (categoria) => categoria.nome === nome
-    ))
-    .map((nome) => ({
-      nome,
-      icone: "outros"
-    }));
+    .filter((nome) => !CATEGORIAS_PADRAO.some((categoria) => categoria.nome === nome))
+    .map((nome) => ({ nome, icone: "outros" }));
 
   return [...conhecidas, ...adicionais];
 }
@@ -390,24 +340,15 @@ function renderizarCategorias() {
   const categorias = obterCategorias();
 
   elementos.listaCategorias.innerHTML = [
-    `
-      <button
-        class="categoria-card ${categoriaAtiva === "todas" ? "ativa" : ""}"
-        type="button"
-        data-categoria="todas">
-        <span class="categoria-icone">${iconeSVG("todas")}</span>
-        <strong>Todos os produtos</strong>
-      </button>
-    `,
-
+    `<button class="categoria-card ${categoriaAtiva === "todas" ? "ativa" : ""}"
+      type="button" data-categoria="todas">
+      <span class="categoria-icone">${iconeSVG("todas")}</span>
+      <strong>Todos os produtos</strong>
+    </button>`,
     ...categorias.map((categoria) => `
-      <button
-        class="categoria-card ${categoriaAtiva === categoria.nome ? "ativa" : ""}"
-        type="button"
-        data-categoria="${escaparHTML(categoria.nome)}">
-        <span class="categoria-icone">
-          ${iconeCategoria(categoria.nome)}
-        </span>
+      <button class="categoria-card ${categoriaAtiva === categoria.nome ? "ativa" : ""}"
+        type="button" data-categoria="${escaparHTML(categoria.nome)}">
+        <span class="categoria-icone">${iconeCategoria(categoria.nome)}</span>
         <strong>${escaparHTML(categoria.nome)}</strong>
       </button>
     `)
@@ -416,9 +357,7 @@ function renderizarCategorias() {
   elementos.filtro.innerHTML = `
     <option value="todas">Todas as categorias</option>
     ${categorias.map((categoria) => `
-      <option value="${escaparHTML(categoria.nome)}">
-        ${escaparHTML(categoria.nome)}
-      </option>
+      <option value="${escaparHTML(categoria.nome)}">${escaparHTML(categoria.nome)}</option>
     `).join("")}
   `;
 
@@ -428,17 +367,12 @@ function renderizarCategorias() {
 /* EXIBIÇÃO DOS PRODUTOS */
 
 function produtoCorrespondeFiltro(produto) {
-  const texto = [
-    produto.nome,
-    produto.categoria,
-    produto.descricao
-  ].join(" ").toLocaleLowerCase("pt-BR");
+  const texto = [produto.nome, produto.categoria, produto.descricao]
+    .join(" ")
+    .toLocaleLowerCase("pt-BR");
 
-  return (
-    (categoriaAtiva === "todas" ||
-      produto.categoria === categoriaAtiva) &&
-    texto.includes(buscaAtual.toLocaleLowerCase("pt-BR"))
-  );
+  return (categoriaAtiva === "todas" || produto.categoria === categoriaAtiva) &&
+    texto.includes(buscaAtual.toLocaleLowerCase("pt-BR"));
 }
 
 function renderizarProdutos() {
@@ -461,14 +395,12 @@ function renderizarProdutos() {
       <div class="estado-vazio">
         <strong>Nenhum produto encontrado</strong>
         <span>Tente outra busca ou escolha outra categoria.</span>
-      </div>
-    `;
+      </div>`;
     return;
   }
 
   elementos.gradeProdutos.innerHTML = lista.map((produto) => {
-    const indisponivel =
-      !produto.disponivel &&
+    const indisponivel = !produto.disponivel &&
       !configuracao.permitirProdutosIndisponiveisNoCarrinho;
 
     const selo = !produto.disponivel
@@ -478,108 +410,70 @@ function renderizarProdutos() {
         : "";
 
     const imagem = produto.imagem
-      ? `
-        <img
-          src="${escaparHTML(produto.imagem)}"
-          alt="${escaparHTML(produto.nome)}"
-          loading="lazy"
+      ? `<img src="${escaparHTML(produto.imagem)}"
+          alt="${escaparHTML(produto.nome)}" loading="lazy"
           onerror="this.hidden=true;this.nextElementSibling.hidden=false">
-        <span class="produto-placeholder" hidden>C</span>
-      `
+         <span class="produto-placeholder" hidden>C</span>`
       : '<span class="produto-placeholder">C</span>';
 
     const embalagensValidas = produto.embalagens.filter(
-      (embalagem) =>
-        embalagem.preco !== null &&
-        embalagem.disponivel
+      (e) => e.preco !== null && e.disponivel
     );
 
     const primeiraDisponivel = embalagensValidas[0];
-
     const precoInicial = primeiraDisponivel
       ? obterPrecoEmbalagem(produto, primeiraDisponivel)
       : null;
 
-    // O seletor só aparece se houver mais de uma embalagem disponível.
-    const mostrarSeletor = embalagensValidas.length > 1;
+    // Mostra o seletor quando o produto tem mais de uma embalagem cadastrada.
+    const mostrarSeletor = produto.embalagens.length > 1;
 
     const opcoesEmbalagem = produto.embalagens.map((embalagem) => {
       const semPreco = embalagem.preco === null;
       const semEstoque = !embalagem.disponivel;
       const desabilitada = semPreco || semEstoque || indisponivel;
-
       let nome = embalagem.nome;
 
-      if (semPreco) {
-        nome += " — preço não cadastrado";
-      } else if (semEstoque) {
-        nome += " — indisponível";
-      }
+      if (semPreco) nome += " — preço não cadastrado";
+      else if (semEstoque) nome += " — indisponível";
 
-      return `
-        <option
-          value="${escaparHTML(embalagem.id)}"
-          ${embalagem.id === primeiraDisponivel?.id ? "selected" : ""}
-          ${desabilitada ? "disabled" : ""}>
-          ${escaparHTML(nome)}
-        </option>
-      `;
+      return `<option value="${escaparHTML(embalagem.id)}"
+        ${embalagem.id === primeiraDisponivel?.id ? "selected" : ""}
+        ${desabilitada ? "disabled" : ""}>${escaparHTML(nome)}</option>`;
     }).join("");
 
     return `
       <article class="produto-card">
-        <div class="produto-imagem">
-          ${selo}
-          ${imagem}
-        </div>
-
+        <div class="produto-imagem">${selo}${imagem}</div>
         <div class="produto-info">
-          <span class="produto-categoria">
-            ${escaparHTML(produto.categoria)}
-          </span>
-
+          <span class="produto-categoria">${escaparHTML(produto.categoria)}</span>
           <h3>${escaparHTML(produto.nome)}</h3>
-
-          <p class="produto-descricao">
-            ${escaparHTML(produto.descricao)}
-          </p>
+          <p class="produto-descricao">${escaparHTML(produto.descricao)}</p>
 
           ${mostrarSeletor ? `
             <label class="produto-embalagem">
               <span>Escolha a embalagem</span>
-              <select
-                class="seletor-embalagem"
+              <select class="seletor-embalagem"
                 data-embalagem-produto="${escaparHTML(produto.id)}"
                 ${indisponivel ? "disabled" : ""}>
                 ${opcoesEmbalagem}
               </select>
-            </label>
-          ` : ""}
+            </label>` : ""}
 
           <div class="produto-rodape">
             <div class="produto-preco">
-              <small>
-                ${configuracao.modoEvento ? "Preço de evento" : "Preço"}
-              </small>
+              <small>${configuracao.modoEvento ? "Preço de evento" : "Preço"}</small>
               <strong data-preco-produto="${escaparHTML(produto.id)}">
-                ${precoInicial === null
-                  ? "Preço a consultar"
-                  : formatarDinheiro(precoInicial)}
+                ${precoInicial === null ? "Preço a consultar" : formatarDinheiro(precoInicial)}
               </strong>
             </div>
-
-            <button
-              type="button"
-              class="botao-adicionar"
+            <button type="button" class="botao-adicionar"
               data-adicionar="${escaparHTML(produto.id)}"
               aria-label="Adicionar ${escaparHTML(produto.nome)}"
-              ${indisponivel || !primeiraDisponivel ? "disabled" : ""}>
-              +
-            </button>
+              ${indisponivel || !primeiraDisponivel ? "disabled" : ""}>+</button>
           </div>
         </div>
-      </article>
-    `;
+      </article>`;
   }).join("");
 }
 
@@ -592,7 +486,6 @@ function atualizarPrecoCard(produtoId, embalagemId) {
   const precoElemento = document.querySelector(
     `[data-preco-produto="${CSS.escape(produtoId)}"]`
   );
-
   const botao = document.querySelector(
     `[data-adicionar="${CSS.escape(produtoId)}"]`
   );
@@ -600,65 +493,42 @@ function atualizarPrecoCard(produtoId, embalagemId) {
   if (!produto || !embalagem || !precoElemento) return;
 
   const preco = obterPrecoEmbalagem(produto, embalagem);
+  const disponivel = produto.disponivel && embalagem.disponivel && preco !== null;
 
-  const disponivel =
-    produto.disponivel &&
-    embalagem.disponivel &&
-    preco !== null;
-
-  precoElemento.textContent = preco === null
-    ? "Preço a consultar"
-    : formatarDinheiro(preco);
+  precoElemento.textContent = preco === null ? "Preço a consultar" : formatarDinheiro(preco);
 
   if (botao) {
     botao.disabled = !disponivel;
-
-    botao.setAttribute(
-      "aria-label",
-      `Adicionar ${produto.nome} — ${embalagem.nome}`
-    );
+    botao.setAttribute("aria-label", `Adicionar ${produto.nome} — ${embalagem.nome}`);
   }
 }
 
 function adicionarProduto(produtoId, embalagemId) {
   const produto = obterProduto(produtoId);
   const embalagem = obterEmbalagem(produto, embalagemId);
-
   if (!produto || !embalagem) return;
 
-  if (
-    !produto.disponivel &&
-    !configuracao.permitirProdutosIndisponiveisNoCarrinho
-  ) {
+  if (!produto.disponivel && !configuracao.permitirProdutosIndisponiveisNoCarrinho) {
     notificar("Este produto está indisponível.");
     return;
   }
 
   const preco = obterPrecoEmbalagem(produto, embalagem);
-
   if (preco === null || !embalagem.disponivel) {
     notificar("Cadastre o preço desta embalagem antes de adicioná-la.");
     return;
   }
 
   const chave = criarChaveCarrinho(produtoId, embalagemId);
-
   carrinho.set(chave, (carrinho.get(chave) || 0) + 1);
-
   renderizarCarrinho();
-
   notificar(`${produto.nome} — ${embalagem.nome} adicionado ao pedido.`);
 }
 
 function alterarQuantidade(chave, delta) {
   const nova = (carrinho.get(chave) || 0) + delta;
-
-  if (nova <= 0) {
-    carrinho.delete(chave);
-  } else {
-    carrinho.set(chave, nova);
-  }
-
+  if (nova <= 0) carrinho.delete(chave);
+  else carrinho.set(chave, nova);
   renderizarCarrinho();
 }
 
@@ -678,8 +548,7 @@ function renderizarCarrinho() {
   }
 
   if (elementos.subtotalCarrinho) {
-    elementos.subtotalCarrinho.textContent =
-      formatarDinheiro(obterSubtotal());
+    elementos.subtotalCarrinho.textContent = formatarDinheiro(obterSubtotal());
   }
 
   if (elementos.finalizarPedido) {
@@ -691,8 +560,7 @@ function renderizarCarrinho() {
       <div class="carrinho-vazio">
         <h3>Seu carrinho está vazio</h3>
         <p>Adicione produtos para montar seu pedido.</p>
-      </div>
-    `;
+      </div>`;
     return;
   }
 
@@ -701,11 +569,9 @@ function renderizarCarrinho() {
       const { produtoId, embalagemId } = separarChaveCarrinho(chave);
       const produto = obterProduto(produtoId);
       const embalagem = obterEmbalagem(produto, embalagemId);
-
       if (!produto || !embalagem) return "";
 
       const preco = obterPrecoEmbalagem(produto, embalagem);
-
       if (preco === null) return "";
 
       return `
@@ -713,36 +579,20 @@ function renderizarCarrinho() {
           <div>
             <h3>${escaparHTML(produto.nome)}</h3>
             <p>${escaparHTML(embalagem.nome)}</p>
-
-            <div class="item-carrinho-preco">
-              ${formatarDinheiro(preco * quantidade)}
-            </div>
-
+            <div class="item-carrinho-preco">${formatarDinheiro(preco * quantidade)}</div>
             <div class="item-carrinho-controles">
-              <button
-                type="button"
-                class="botao-quantidade"
+              <button type="button" class="botao-quantidade"
                 data-diminuir="${escaparHTML(chave)}"
                 aria-label="Diminuir quantidade">−</button>
-
               <span>${quantidade}</span>
-
-              <button
-                type="button"
-                class="botao-quantidade"
+              <button type="button" class="botao-quantidade"
                 data-aumentar="${escaparHTML(chave)}"
                 aria-label="Aumentar quantidade">+</button>
             </div>
           </div>
-
-          <button
-            type="button"
-            class="botao-remover"
-            data-remover="${escaparHTML(chave)}">
-            Remover
-          </button>
-        </article>
-      `;
+          <button type="button" class="botao-remover"
+            data-remover="${escaparHTML(chave)}">Remover</button>
+        </article>`;
     }).join("");
 }
 
@@ -752,11 +602,7 @@ function abrirCarrinho() {
   elementos.painelCarrinho?.classList.add("aberto");
   elementos.painelCarrinho?.setAttribute("aria-hidden", "false");
   elementos.painelCarrinho?.removeAttribute("inert");
-
-  if (elementos.fundoModal) {
-    elementos.fundoModal.hidden = false;
-  }
-
+  if (elementos.fundoModal) elementos.fundoModal.hidden = false;
   document.body.classList.add("modal-aberto");
   elementos.fecharCarrinho?.focus();
 }
@@ -765,11 +611,7 @@ function fecharCarrinho() {
   elementos.painelCarrinho?.classList.remove("aberto");
   elementos.painelCarrinho?.setAttribute("aria-hidden", "true");
   elementos.painelCarrinho?.setAttribute("inert", "");
-
-  if (elementos.fundoModal) {
-    elementos.fundoModal.hidden = true;
-  }
-
+  if (elementos.fundoModal) elementos.fundoModal.hidden = true;
   document.body.classList.remove("modal-aberto");
 }
 
@@ -796,13 +638,9 @@ function finalizarPedido() {
     const { produtoId, embalagemId } = separarChaveCarrinho(chave);
     const produto = obterProduto(produtoId);
     const embalagem = obterEmbalagem(produto, embalagemId);
-
     if (!produto || !embalagem) continue;
 
-    if (
-      !produto.disponivel &&
-      !configuracao.permitirProdutosIndisponiveisNoCarrinho
-    ) {
+    if (!produto.disponivel && !configuracao.permitirProdutosIndisponiveisNoCarrinho) {
       notificar(`Confira a disponibilidade de ${produto.nome}.`);
       return;
     }
@@ -813,11 +651,8 @@ function finalizarPedido() {
     }
 
     const preco = obterPrecoEmbalagem(produto, embalagem);
-
     if (preco === null) {
-      notificar(
-        `O preço de ${produto.nome} — ${embalagem.nome} precisa ser cadastrado.`
-      );
+      notificar(`O preço de ${produto.nome} — ${embalagem.nome} precisa ser cadastrado.`);
       return;
     }
 
@@ -834,12 +669,9 @@ function finalizarPedido() {
   }
 
   linhas.push("");
-  linhas.push(
-    "Por favor, confirme a disponibilidade, entrega e pagamento."
-  );
+  linhas.push("Por favor, confirme a disponibilidade, entrega e pagamento.");
 
-  const url =
-    `https://wa.me/${configuracao.whatsapp}?text=` +
+  const url = `https://wa.me/${configuracao.whatsapp}?text=` +
     encodeURIComponent(linhas.join("\n"));
 
   window.open(url, "_blank", "noopener,noreferrer");
@@ -849,20 +681,13 @@ function finalizarPedido() {
 
 async function atualizarConfiguracao() {
   try {
-    const nova = validarConfiguracao(
-      await buscarJSON(ARQUIVOS.config)
-    );
-
-    const mudou =
-      JSON.stringify(nova) !== JSON.stringify(configuracao);
-
+    const nova = validarConfiguracao(await buscarJSON(ARQUIVOS.config));
+    const mudou = JSON.stringify(nova) !== JSON.stringify(configuracao);
     configuracao = nova;
 
     if (elementos.avisoEvento) {
       elementos.avisoEvento.hidden = !configuracao.modoEvento;
-
       const texto = $("#texto-aviso-evento");
-
       if (texto && configuracao.modoEvento) {
         texto.textContent = configuracao.mensagemEvento;
       }
@@ -875,7 +700,6 @@ async function atualizarConfiguracao() {
     }
 
     const endereco = $("#endereco-rodape");
-
     if (endereco && configuracao.endereco) {
       endereco.textContent = configuracao.endereco;
     }
@@ -896,17 +720,14 @@ async function atualizarConfiguracao() {
 
 async function atualizarProdutos() {
   try {
-    produtos = validarProdutos(
-      await buscarJSON(ARQUIVOS.produtos)
-    );
+    produtos = validarProdutos(await buscarJSON(ARQUIVOS.produtos));
 
     for (const chave of carrinho.keys()) {
       const { produtoId, embalagemId } = separarChaveCarrinho(chave);
       const produto = obterProduto(produtoId);
       const embalagem = obterEmbalagem(produto, embalagemId);
 
-      const indisponivel =
-        produto &&
+      const indisponivel = produto &&
         !produto.disponivel &&
         !configuracao.permitirProdutosIndisponiveisNoCarrinho;
 
@@ -933,10 +754,25 @@ async function atualizarProdutos() {
   } catch (erro) {
     console.error("Erro ao carregar produtos:", erro);
 
+    // Mesmo se o JSON falhar, mantém as categorias visíveis.
+    renderizarCategorias();
+
+    if (elementos.gradeProdutos) {
+      elementos.gradeProdutos.innerHTML = `
+        <div class="estado-vazio">
+          <strong>Não foi possível carregar os produtos</strong>
+          <span>Verifique o arquivo produtos.json e tente novamente.</span>
+        </div>`;
+    }
+
+    if (elementos.quantidadeProdutos) {
+      elementos.quantidadeProdutos.textContent = "0 produtos";
+    }
+
     if (elementos.estadoProdutos) {
       elementos.estadoProdutos.hidden = false;
       elementos.estadoProdutos.textContent =
-        "Não foi possível carregar os produtos. Tente recarregar a página.";
+        "Não foi possível carregar os produtos. Verifique o arquivo produtos.json.";
     }
 
     return false;
@@ -945,7 +781,6 @@ async function atualizarProdutos() {
 
 function iniciarAtualizacaoAutomatica() {
   clearInterval(timerConfiguracao);
-
   timerConfiguracao = setInterval(async () => {
     await atualizarConfiguracao();
     await atualizarProdutos();
@@ -971,7 +806,6 @@ function configurarEventos() {
     if (!botao) return;
 
     categoriaAtiva = botao.dataset.categoria;
-
     renderizarCategorias();
     renderizarProdutos();
 
@@ -984,11 +818,7 @@ function configurarEventos() {
   elementos.gradeProdutos?.addEventListener("change", (evento) => {
     const seletor = evento.target.closest("[data-embalagem-produto]");
     if (!seletor) return;
-
-    atualizarPrecoCard(
-      seletor.dataset.embalagemProduto,
-      seletor.value
-    );
+    atualizarPrecoCard(seletor.dataset.embalagemProduto, seletor.value);
   });
 
   elementos.gradeProdutos?.addEventListener("click", (evento) => {
@@ -997,21 +827,16 @@ function configurarEventos() {
 
     const produtoId = botao.dataset.adicionar;
     const produto = obterProduto(produtoId);
-
     if (!produto) return;
 
     const seletor = elementos.gradeProdutos.querySelector(
       `[data-embalagem-produto="${CSS.escape(produtoId)}"]`
     );
 
-    // Com seletor, usa a escolha do cliente.
-    // Sem seletor, adiciona a única embalagem disponível.
     const embalagemId = seletor
       ? seletor.value
-      : produto.embalagens.find(
-          (embalagem) =>
-            embalagem.preco !== null &&
-            embalagem.disponivel
+      : produto.embalagens.find((embalagem) =>
+          embalagem.preco !== null && embalagem.disponivel
         )?.id;
 
     if (!embalagemId) {
@@ -1041,15 +866,10 @@ function configurarEventos() {
   elementos.fundoModal?.addEventListener("click", fecharCarrinho);
   elementos.finalizarPedido?.addEventListener("click", finalizarPedido);
 
-  $("#abrir-carrinho-contato")?.addEventListener(
-    "click",
-    abrirCarrinho
-  );
+  $("#abrir-carrinho-contato")?.addEventListener("click", abrirCarrinho);
 
   document.addEventListener("keydown", (evento) => {
-    if (evento.key === "Escape") {
-      fecharCarrinho();
-    }
+    if (evento.key === "Escape") fecharCarrinho();
   });
 
   if (elementos.anoAtual) {
@@ -1062,6 +882,7 @@ function configurarEventos() {
 async function iniciarSite() {
   configurarEventos();
 
+  // Carrega os produtos mesmo se config.json estiver com erro.
   await atualizarConfiguracao();
   await atualizarProdutos();
 
