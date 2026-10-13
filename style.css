@@ -1672,6 +1672,74 @@ svg {
     padding: 9px;
   }
 
+  
+/* SELETOR DE EMBALAGENS DOS PRODUTOS */
+
+.produto-embalagem {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin: 0 0 16px;
+}
+
+.produto-embalagem > span {
+  color: #77808d;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.seletor-embalagem {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 30px 8px 10px;
+  border: 1px solid #e1e0da;
+  border-radius: 6px;
+  background: #fff;
+  color: #101b2b;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.seletor-embalagem:focus {
+  border-color: #d5b16b;
+  outline: 2px solid rgba(213, 177, 107, 0.2);
+}
+
+.seletor-embalagem option:disabled {
+  color: #999;
+}
+
+.produto-embalagem select:disabled {
+  cursor: not-allowed;
+  background: #f6f5f1;
+}
+
+.item-carrinho > div > p {
+  margin: 0 0 6px;
+  color: #77808d;
+  font-size: 11px;
+}
+
+/* Ajustes para telas pequenas */
+
+@media (max-width: 650px) {
+  .produto-embalagem {
+    gap: 5px;
+    margin-bottom: 12px;
+  }
+
+  .produto-embalagem > span {
+    font-size: 10px;
+  }
+
+  .seletor-embalagem {
+    min-height: 38px;
+    padding: 7px 5px;
+    font-size: 11px;
+  }
+}
+
+
   .produto-preco strong {
     font-size: 12px;
   }
