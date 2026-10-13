@@ -162,6 +162,158 @@
       "disponivel": true,
       "destaque": false,
       "aumentoEvento": 0
+    },
+    {
+      "id": "vinho-tinto",
+      "nome": "Vinho Tinto",
+      "categoria": "Vinhos",
+      "descricao": "Consulte marcas e disponibilidade",
+      "preco": 0,
+      "embalagens": [
+        {
+          "id": "unidade",
+          "nome": "Garrafa",
+          "quantidade": 1,
+          "preco": null
+        }
+      ],
+      "imagem": "",
+      "disponivel": true,
+      "destaque": false,
+      "aumentoEvento": null
+    },
+    {
+      "id": "vinho-suave",
+      "nome": "Vinho Suave",
+      "categoria": "Vinhos",
+      "descricao": "Consulte marcas e disponibilidade",
+      "preco": 0,
+      "embalagens": [
+        {
+          "id": "unidade",
+          "nome": "Garrafa",
+          "quantidade": 1,
+          "preco": null
+        }
+      ],
+      "imagem": "",
+      "disponivel": true,
+      "destaque": false,
+      "aumentoEvento": null
+    },
+    {
+      "id": "whisky",
+      "nome": "Whisky",
+      "categoria": "Destilados",
+      "descricao": "Consulte marcas e tamanhos disponíveis",
+      "preco": 0,
+      "embalagens": [
+        {
+          "id": "unidade",
+          "nome": "Garrafa",
+          "quantidade": 1,
+          "preco": null
+        }
+      ],
+      "imagem": "",
+      "disponivel": true,
+      "destaque": false,
+      "aumentoEvento": null
+    },
+    {
+      "id": "vodka",
+      "nome": "Vodka",
+      "categoria": "Destilados",
+      "descricao": "Consulte marcas e tamanhos disponíveis",
+      "preco": 0,
+      "embalagens": [
+        {
+          "id": "unidade",
+          "nome": "Garrafa",
+          "quantidade": 1,
+          "preco": null
+        }
+      ],
+      "imagem": "",
+      "disponivel": true,
+      "destaque": false,
+      "aumentoEvento": null
+    },
+    {
+      "id": "gin",
+      "nome": "Gin",
+      "categoria": "Destilados",
+      "descricao": "Consulte marcas e tamanhos disponíveis",
+      "preco": 0,
+      "embalagens": [
+        {
+          "id": "unidade",
+          "nome": "Garrafa",
+          "quantidade": 1,
+          "preco": null
+        }
+      ],
+      "imagem": "",
+      "disponivel": true,
+      "destaque": false,
+      "aumentoEvento": null
+    },
+    {
+      "id": "cachaca",
+      "nome": "Cachaça",
+      "categoria": "Destilados",
+      "descricao": "Consulte marcas e tamanhos disponíveis",
+      "preco": 0,
+      "embalagens": [
+        {
+          "id": "unidade",
+          "nome": "Garrafa",
+          "quantidade": 1,
+          "preco": null
+        }
+      ],
+      "imagem": "",
+      "disponivel": true,
+      "destaque": false,
+      "aumentoEvento": null
+    },
+    {
+      "id": "rum",
+      "nome": "Rum",
+      "categoria": "Destilados",
+      "descricao": "Consulte marcas e tamanhos disponíveis",
+      "preco": 0,
+      "embalagens": [
+        {
+          "id": "unidade",
+          "nome": "Garrafa",
+          "quantidade": 1,
+          "preco": null
+        }
+      ],
+      "imagem": "",
+      "disponivel": true,
+      "destaque": false,
+      "aumentoEvento": null
+    },
+    {
+      "id": "conhaque",
+      "nome": "Conhaque",
+      "categoria": "Destilados",
+      "descricao": "Consulte marcas e tamanhos disponíveis",
+      "preco": 0,
+      "embalagens": [
+        {
+          "id": "unidade",
+          "nome": "Garrafa",
+          "quantidade": 1,
+          "preco": null
+        }
+      ],
+      "imagem": "",
+      "disponivel": true,
+      "destaque": false,
+      "aumentoEvento": null
     }
   ]
 }
