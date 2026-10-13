@@ -5,443 +5,173 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Administração | Depósito Cumaru</title>
 <style>
-*{box-sizing:border-box}
-body{margin:0;background:#f4f5f7;color:#202124;font-family:Arial,sans-serif}
-header{background:#202124;color:white;padding:20px}
-header h1{margin:0;font-size:22px}
-main{max-width:1000px;margin:25px auto;padding:0 15px}
-.panel{background:white;border-radius:12px;padding:20px;margin-bottom:18px;box-shadow:0 2px 10px #0000000d}
-input,textarea,select,button{font:inherit}
-input,textarea,select{width:100%;padding:11px;border:1px solid #ccc;border-radius:7px;margin:5px 0 12px}
-button{border:0;border-radius:7px;padding:12px 16px;background:#202124;color:white;cursor:pointer;margin:4px 4px 4px 0}
-button.secondary{background:#e8e8e8;color:#222}
-button.danger,.remove-package{background:#a62626;color:white}
-button.add-package{background:#e8e8e8;color:#222;margin-top:8px}
-label{font-size:13px;font-weight:bold;display:block}
-.product{border:1px solid #ddd;border-radius:10px;padding:16px;margin:14px 0}
-.product h3{margin-top:0}
-.status{margin:12px 0;white-space:pre-wrap}
-.hidden{display:none}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
-small{color:#666}
-.packages{border:1px solid #e1e1e1;background:#fafafa;padding:12px;border-radius:9px;margin:10px 0 14px}
-.package-row{display:grid;grid-template-columns:minmax(100px,1fr) minmax(100px,1fr) auto;gap:10px;align-items:end;border-bottom:1px solid #e6e6e6;padding:8px 0}
-.package-row input{margin-bottom:8px}
-.package-row .remove-package{padding:10px 12px;margin-bottom:16px}
-.package-title{margin:0 0 4px;font-size:15px}
-.package-help{display:block;margin-bottom:8px}
-@media(max-width:520px){
-.package-row{grid-template-columns:1fr 1fr}
-.package-row .remove-package{grid-column:1/-1;margin:0 0 8px;width:100%}
-header h1{font-size:19px}
-.panel{padding:14px}
-}
+*{box-sizing:border-box}body{margin:0;background:#f4f5f7;color:#202124;font-family:Arial,sans-serif}
+header{background:#202124;color:white;padding:20px}header h1{margin:0;font-size:22px}
+main{max-width:1000px;margin:25px auto;padding:0 15px}.panel{background:white;border-radius:12px;padding:20px;margin-bottom:18px;box-shadow:0 2px 10px #0000000d}
+input,textarea,select,button{font:inherit}input,textarea,select{width:100%;padding:11px;border:1px solid #ccc;border-radius:7px;margin:5px 0 12px}
+button{border:0;border-radius:7px;padding:12px 16px;background:#202124;color:white;cursor:pointer;margin:4px 4px 4px 0}button.secondary,.add-package{background:#e8e8e8;color:#222}button.danger,.remove-package{background:#a62626;color:white}
+label{font-size:13px;font-weight:bold;display:block}.product{border:1px solid #ddd;border-radius:10px;padding:16px;margin:14px 0}.product h3{margin-top:0}
+.status{margin:12px 0;white-space:pre-wrap}.hidden{display:none}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+small{color:#666}.packages{border:1px solid #e1e1e1;background:#fafafa;padding:12px;border-radius:9px;margin:10px 0 14px}
+.package-row{display:grid;grid-template-columns:minmax(120px,1fr) minmax(90px,.7fr) minmax(100px,.8fr) auto;gap:10px;align-items:end;border-bottom:1px solid #e6e6e6;padding:8px 0}
+.package-row input{margin-bottom:8px}.package-row button{padding:10px;margin-bottom:16px}.package-title{margin:0 0 4px;font-size:15px}.package-help{display:block;margin-bottom:8px}
+.notice{background:#fff8df;border:1px solid #f0d98b;border-radius:8px;padding:10px;margin:10px 0;font-size:13px}
+@media(max-width:600px){.package-row{grid-template-columns:1fr 1fr}.package-row button{grid-column:1/-1;margin:0 0 8px;width:100%}header h1{font-size:19px}.panel{padding:14px}}
 </style>
 </head>
 <body>
 <header><h1>Depósito Cumaru — Painel administrativo</h1></header>
 <main>
 <section id="login" class="panel">
-<h2>Acesso administrativo</h2>
-<label for="senha">Senha de administrador</label>
+<h2>Acesso administrativo</h2><label for="senha">Senha de administrador</label>
 <input id="senha" type="password" autocomplete="current-password" placeholder="Digite sua senha">
-<button id="entrar">Entrar</button>
-<div id="loginStatus" class="status"></div>
+<button id="entrar">Entrar</button><div id="loginStatus" class="status"></div>
 </section>
 <section id="area" class="hidden">
-<div class="panel">
-<h2>Produtos</h2>
-<p><small>Edite os dados e clique em Salvar alterações para atualizar o arquivo no GitHub.</small></p>
-<button id="novo">+ Adicionar produto</button>
-<button id="salvar">Salvar alterações</button>
-<button id="sair" class="secondary">Sair</button>
-<div id="status" class="status"></div>
-</div>
-<div id="lista"></div>
+<div class="panel"><h2>Produtos</h2>
+<p><small>Edite os dados e clique em Salvar alterações para atualizar o catálogo no GitHub.</small></p>
+<div class="notice"><strong>Modo festa:</strong> os preços abaixo são os preços normais. Quando o modo festa estiver ativado no config.json, o site aplica o aumento percentual configurado sobre estes preços originais, sem acumular aumentos. Não digite o preço já aumentado aqui.</div>
+<button id="novo">+ Adicionar produto</button><button id="salvar">Salvar alterações</button><button id="sair" class="secondary">Sair</button><div id="status" class="status"></div>
+</div><div id="lista"></div>
 </section>
 </main>
 <script>
-const API = "https://cumaru-deposito.psilvaa149.workers.dev";
-let token = "", sha = "", catalogo = null;
-
-const $ = id => document.getElementById(id);
-
-function mensagem(id, texto) {
-  $(id).textContent = texto;
+const API="https://cumaru-deposito.psilvaa149.workers.dev";
+let token="",sha="",catalogo=null;
+const $=id=>document.getElementById(id);
+function mensagem(id,texto){$(id).textContent=texto}
+async function requisicao(caminho,opcoes={}){
+ const r=await fetch(API+caminho,{...opcoes,headers:{...(opcoes.headers||{}),...(token?{Authorization:"Bearer "+token}:{})}});
+ const dados=await r.json().catch(()=>({}));
+ if(!r.ok)throw new Error(dados.erro||"Erro HTTP "+r.status);
+ return dados;
 }
-
-async function requisicao(caminho, opcoes = {}) {
-  const r = await fetch(API + caminho, {
-    ...opcoes,
-    headers: {
-      ...(opcoes.headers || {}),
-      ...(token ? { Authorization: "Bearer " + token } : {})
-    }
-  });
-
-  const dados = await r.json().catch(() => ({}));
-
-  if (!r.ok) {
-    throw new Error(dados.erro || "Erro HTTP " + r.status);
-  }
-
-  return dados;
-}
-
-$("entrar").onclick = async () => {
-  mensagem("loginStatus", "Verificando acesso...");
-
-  try {
-    const r = await requisicao("/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ senha: $("senha").value })
-    });
-
-    token = r.token;
-    $("senha").value = "";
-
-    await carregar();
-
-    $("login").classList.add("hidden");
-    $("area").classList.remove("hidden");
-  } catch (e) {
-    mensagem("loginStatus", "Não foi possível entrar: " + e.message);
-  }
+$("entrar").onclick=async()=>{
+ mensagem("loginStatus","Verificando acesso...");
+ try{
+  const r=await requisicao("/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({senha:$("senha").value})});
+  token=r.token;$("senha").value="";await carregar();
+  $("login").classList.add("hidden");$("area").classList.remove("hidden");
+ }catch(e){mensagem("loginStatus","Não foi possível entrar: "+e.message)}
 };
-
-async function carregar() {
-  mensagem("status", "Carregando catálogo...");
-
-  const r = await requisicao("/produtos");
-
-  catalogo = r.produtos;
-  sha = r.sha;
-
-  if (!catalogo || !Array.isArray(catalogo.produtos)) {
-    throw new Error("Formato de catálogo inesperado.");
-  }
-
-  renderizar();
-
-  mensagem("status", catalogo.produtos.length + " produtos carregados.");
+async function carregar(){
+ mensagem("status","Carregando catálogo...");
+ const r=await requisicao("/produtos");catalogo=r.produtos;sha=r.sha;
+ if(!catalogo||!Array.isArray(catalogo.produtos))throw new Error("Formato de catálogo inesperado.");
+ renderizar();mensagem("status",catalogo.produtos.length+" produtos carregados.");
 }
-
-function campo(rotulo, valor, chave, tipo = "text") {
-  const label = document.createElement("label");
-  label.textContent = rotulo;
-
-  const input = document.createElement("input");
-  input.type = tipo;
-  input.dataset.key = chave;
-  input.value = valor == null ? "" : String(valor);
-
-  if (tipo === "number") {
-    input.step = "0.01";
-    input.inputMode = "decimal";
-  }
-
-  label.appendChild(input);
-  return label;
+function campo(rotulo,valor,chave,tipo="text"){
+ const label=document.createElement("label");label.textContent=rotulo;
+ const input=document.createElement("input");input.type=tipo;input.dataset.key=chave;input.value=valor==null?"":String(valor);
+ if(tipo==="number"){input.step="0.01";input.inputMode="decimal"}
+ label.appendChild(input);return label;
 }
-
-function normalizarEmbalagens(produto) {
-  let lista = produto.embalagens;
-
-  if (typeof lista === "string") {
-    try {
-      lista = JSON.parse(lista);
-    } catch {
-      lista = [];
-    }
-  }
-
-  if (!Array.isArray(lista)) return [];
-
-  return lista.map(item => ({
-    ...item,
-    quantidade: item.quantidade ?? item.qtd ?? item.nome ?? 1,
-    preco: Number(item.preco ?? item.valor ?? produto.preco ?? 0)
-  }));
+function prepararEmbalagens(p){
+ let lista=p.embalagens;
+ if(typeof lista==="string"){try{lista=JSON.parse(lista)}catch{lista=[]}}
+ if(!Array.isArray(lista)||!lista.length){
+  const preco=Number(p.preco);
+  lista=[{id:"unidade",nome:"Unidade",quantidade:1,preco:Number.isFinite(preco)?preco:0,disponivel:true}];
+ }
+ return lista.map((e,i)=>({
+  ...e,
+  id:String(e.id|| (i===0?"unidade":"embalagem-"+(i+1))),
+  nome:String(e.nome||e.quantidade||"Unidade"),
+  quantidade:Math.max(1,Number(e.quantidade)||1),
+  preco:Number.isFinite(Number(e.preco))?Number(e.preco):0,
+  disponivel:e.disponivel!==false
+ }));
 }
-
-function sincronizarEmbalagens(indice, secao) {
-  if (!catalogo?.produtos[indice]) return;
-
-  catalogo.produtos[indice].embalagens = [
-    ...secao.querySelectorAll(".package-row")
-  ].map(linha => {
-    const q = linha.querySelector(
-      '[data-key="emb-quantidade"]'
-    ).value.trim();
-
-    const preco = linha.querySelector(
-      '[data-key="emb-preco"]'
-    ).value;
-
-    return {
-      quantidade: q === ""
-        ? 1
-        : (Number.isFinite(Number(q)) ? Number(q) : q),
-      preco: Number(preco || 0)
-    };
-  });
+function sincronizarEmbalagens(indice,secao){
+ const p=catalogo?.produtos[indice];if(!p)return;
+ p.embalagens=[...secao.querySelectorAll(".package-row")].map((linha,i)=>{
+  const id=linha.querySelector('[data-key="emb-id"]').value.trim()|| (i===0?"unidade":"embalagem-"+(i+1));
+  const nome=linha.querySelector('[data-key="emb-nome"]').value.trim()||"Unidade";
+  const quantidade=Math.max(1,Number(linha.querySelector('[data-key="emb-quantidade"]').value)||1);
+  const preco=Number(linha.querySelector('[data-key="emb-preco"]').value||0);
+  const anterior=prepararEmbalagens(p).find(e=>e.id===id);
+  return {id,nome,quantidade,preco,disponivel:anterior?anterior.disponivel:true};
+ });
+ const unidade=p.embalagens.find(e=>e.id==="unidade")||p.embalagens[0];
+ if(unidade)p.preco=Number(unidade.preco)||0;
 }
-
-function criarEditorEmbalagens(produto, indice) {
-  const secao = document.createElement("section");
-  secao.className = "packages";
-
-  const titulo = document.createElement("h4");
-  titulo.className = "package-title";
-  titulo.textContent = "Embalagens e preços";
-  secao.appendChild(titulo);
-
-  const ajuda = document.createElement("small");
-  ajuda.className = "package-help";
-  ajuda.textContent =
-    "Informe a quantidade ou o nome da embalagem e o preço correspondente.";
-  secao.appendChild(ajuda);
-
-  const linhas = document.createElement("div");
-  linhas.className = "package-list";
-  secao.appendChild(linhas);
-
-  function adicionarLinha(item = {
-    quantidade: 1,
-    preco: produto.preco ?? 0
-  }) {
-    const linha = document.createElement("div");
-    linha.className = "package-row";
-
-    const quantidade = campo(
-      "Quantidade / embalagem",
-      item.quantidade ?? 1,
-      "emb-quantidade",
-      "text"
-    );
-
-    const preco = campo(
-      "Preço (R$)",
-      item.preco ?? 0,
-      "emb-preco",
-      "number"
-    );
-
-    preco.querySelector("input").step = "0.01";
-
-    const remover = document.createElement("button");
-    remover.type = "button";
-    remover.className = "remove-package";
-    remover.textContent = "Remover";
-
-    remover.onclick = () => {
-      linha.remove();
-      sincronizarEmbalagens(indice, secao);
-    };
-
-    [quantidade, preco].forEach(campo => {
-      campo.querySelector("input").addEventListener("input", () => {
-        sincronizarEmbalagens(indice, secao);
-      });
-    });
-
-    linha.append(quantidade, preco, remover);
-    linhas.appendChild(linha);
-
-    sincronizarEmbalagens(indice, secao);
-  }
-
-  const adicionar = document.createElement("button");
-  adicionar.type = "button";
-  adicionar.className = "add-package";
-  adicionar.textContent = "+ Adicionar embalagem";
-
-  adicionar.onclick = () => {
-    adicionarLinha({
-      quantidade: 1,
-      preco: produto.preco ?? 0
-    });
-  };
-
-  secao.appendChild(adicionar);
-
-  normalizarEmbalagens(produto).forEach(adicionarLinha);
-
-  return secao;
+function criarEditorEmbalagens(produto,indice){
+ const secao=document.createElement("section");secao.className="packages";
+ const titulo=document.createElement("h4");titulo.className="package-title";titulo.textContent="Embalagens e preços normais";secao.appendChild(titulo);
+ const ajuda=document.createElement("small");ajuda.className="package-help";ajuda.textContent="Cadastre o nome exibido ao cliente, a quantidade e o preço normal (sem aumento de festa).";secao.appendChild(ajuda);
+ const linhas=document.createElement("div");linhas.className="package-list";secao.appendChild(linhas);
+ function adicionarLinha(item={}){
+  const linha=document.createElement("div");linha.className="package-row";
+  const id=campo("Identificador interno",item.id||"","emb-id");
+  const nome=campo("Nome da embalagem",item.nome||"Unidade","emb-nome");
+  const quantidade=campo("Quantidade",item.quantidade??1,"emb-quantidade","number");
+  const preco=campo("Preço normal (R$)",item.preco??0,"emb-preco","number");
+  id.querySelector("input").placeholder="ex.: unidade";
+  quantidade.querySelector("input").min="1";quantidade.querySelector("input").step="1";
+  preco.querySelector("input").step="0.01";
+  const remover=document.createElement("button");remover.type="button";remover.className="remove-package";remover.textContent="Remover";
+  remover.onclick=()=>{linha.remove();sincronizarEmbalagens(indice,secao)};
+  linha.append(nome,quantidade,preco,remover);
+  // O identificador fica oculto para manter o formato compatível com o site.
+  id.style.display="none";linha.appendChild(id);
+  linha.querySelectorAll("input").forEach(input=>input.addEventListener("input",()=>sincronizarEmbalagens(indice,secao)));
+  linhas.appendChild(linha);sincronizarEmbalagens(indice,secao);
+ }
+ const adicionar=document.createElement("button");adicionar.type="button";adicionar.className="add-package";adicionar.textContent="+ Adicionar embalagem";
+ adicionar.onclick=()=>adicionarLinha({id:"",nome:"Nova embalagem",quantidade:1,preco:0});
+ secao.appendChild(adicionar);
+ prepararEmbalagens(produto).forEach(adicionarLinha);
+ return secao;
 }
-function atualizarCampoProduto(indice, input) {
-  const produto = catalogo.produtos[indice];
-  const chave = input.dataset.key;
-
-  if (chave === "preco") {
-    produto.preco = Number(input.value || 0);
-  } else if (chave === "disponivel") {
-    produto.disponivel = input.value === "true";
-  } else if (
-    chave !== "emb-quantidade" &&
-    chave !== "emb-preco"
-  ) {
-    produto[chave] = input.value;
-  }
+function atualizarCampoProduto(i,input){
+ const p=catalogo.produtos[i],k=input.dataset.key;
+ if(k==="disponivel")p.disponivel=input.value==="true";
+ else p[k]=input.value;
 }
-
-function renderizar() {
-  const lista = $("lista");
-  lista.replaceChildren();
-
-  catalogo.produtos.forEach((p, i) => {
-    const card = document.createElement("section");
-    card.className = "panel product";
-
-    const titulo = document.createElement("h3");
-    titulo.textContent =
-      (p.nome || "Produto sem nome") + " (#" + (i + 1) + ")";
-    card.appendChild(titulo);
-
-    const grid = document.createElement("div");
-    grid.className = "grid";
-
-    grid.append(
-      campo("Nome", p.nome, "nome"),
-      campo("Categoria", p.categoria, "categoria"),
-      campo("Preço principal (R$)", p.preco, "preco", "number"),
-      campo("Imagem (caminho ou URL)", p.imagem, "imagem")
-    );
-
-    const desc = document.createElement("label");
-    desc.textContent = "Descrição";
-
-    const textarea = document.createElement("textarea");
-    textarea.dataset.key = "descricao";
-    textarea.value = p.descricao || "";
-
-    desc.appendChild(textarea);
-    grid.appendChild(desc);
-
-    const disponibilidade = document.createElement("label");
-    disponibilidade.textContent = "Disponibilidade";
-
-    const select = document.createElement("select");
-    select.dataset.key = "disponivel";
-
-    [["true", "Disponível"], ["false", "Indisponível"]]
-      .forEach(([valor, texto]) => {
-        const opcao = document.createElement("option");
-        opcao.value = valor;
-        opcao.textContent = texto;
-        select.appendChild(opcao);
-      });
-
-    select.value = p.disponivel === false ? "false" : "true";
-    disponibilidade.appendChild(select);
-    grid.appendChild(disponibilidade);
-
-    card.appendChild(grid);
-    card.appendChild(criarEditorEmbalagens(p, i));
-
-    const excluir = document.createElement("button");
-    excluir.className = "danger";
-    excluir.textContent = "Excluir produto";
-
-    excluir.onclick = () => {
-      if (confirm("Excluir " + (p.nome || "este produto") + "?")) {
-        catalogo.produtos.splice(i, 1);
-        renderizar();
-        mensagem(
-          "status",
-          "Produto removido da edição. Clique em Salvar alterações para confirmar."
-        );
-      }
-    };
-
-    card.appendChild(excluir);
-    lista.appendChild(card);
-  });
-
-  lista.querySelectorAll(".product").forEach((card, i) => {
-    card.querySelectorAll("[data-key]").forEach(input => {
-      if (
-        input.dataset.key === "emb-quantidade" ||
-        input.dataset.key === "emb-preco"
-      ) return;
-
-      input.addEventListener("input", () => {
-        atualizarCampoProduto(i, input);
-      });
-
-      input.addEventListener("change", () => {
-        atualizarCampoProduto(i, input);
-      });
-    });
-  });
+function renderizar(){
+ const lista=$("lista");lista.replaceChildren();
+ catalogo.produtos.forEach((p,i)=>{
+  const card=document.createElement("section");card.className="panel product";
+  const titulo=document.createElement("h3");titulo.textContent=(p.nome||"Produto sem nome")+" (#"+(i+1)+")";card.appendChild(titulo);
+  const grid=document.createElement("div");grid.className="grid";
+  grid.append(campo("Nome",p.nome,"nome"),campo("Categoria",p.categoria,"categoria"),campo("Imagem (caminho ou URL)",p.imagem,"imagem"));
+  const desc=document.createElement("label");desc.textContent="Descrição";const ta=document.createElement("textarea");ta.dataset.key="descricao";ta.value=p.descricao||"";desc.appendChild(ta);grid.appendChild(desc);
+  const wrap=document.createElement("label");wrap.textContent="Disponibilidade";const select=document.createElement("select");select.dataset.key="disponivel";
+  [["true","Disponível"],["false","Indisponível"]].forEach(([v,t])=>{const o=document.createElement("option");o.value=v;o.textContent=t;select.appendChild(o)});
+  select.value=p.disponivel===false?"false":"true";wrap.appendChild(select);grid.appendChild(wrap);card.appendChild(grid);
+  card.appendChild(criarEditorEmbalagens(p,i));
+  const excluir=document.createElement("button");excluir.className="danger";excluir.textContent="Excluir produto";
+  excluir.onclick=()=>{if(confirm("Excluir "+(p.nome||"este produto")+"?")){catalogo.produtos.splice(i,1);renderizar();mensagem("status","Produto removido da edição. Clique em Salvar alterações para confirmar.")}};
+  card.appendChild(excluir);lista.appendChild(card);
+ });
+ lista.querySelectorAll(".product").forEach((card,i)=>card.querySelectorAll("[data-key]").forEach(input=>{
+  if(input.dataset.key.startsWith("emb-"))return;
+  input.addEventListener("input",()=>atualizarCampoProduto(i,input));
+  input.addEventListener("change",()=>atualizarCampoProduto(i,input));
+ }));
 }
-
-$("novo").onclick = () => {
-  catalogo.produtos.push({
-    nome: "",
-    categoria: "",
-    descricao: "",
-    preco: 0,
-    embalagens: [],
-    imagem: "",
-    disponivel: true
-  });
-
-  renderizar();
-  mensagem("status", "Novo produto adicionado. Preencha os campos e salve.");
+$("novo").onclick=()=>{
+ catalogo.produtos.push({id:"produto-"+Date.now(),nome:"",categoria:"Outros",descricao:"",preco:0,embalagens:[{id:"unidade",nome:"Unidade",quantidade:1,preco:0,disponivel:true}],imagem:"",disponivel:true,aumentoEvento:null});
+ renderizar();mensagem("status","Novo produto adicionado. Preencha os campos e salve.");
 };
-
-$("salvar").onclick = async () => {
-  try {
-    const cards = [...document.querySelectorAll("#lista .product")];
-
-    cards.forEach((card, i) => {
-      card.querySelectorAll("[data-key]").forEach(input => {
-        if (
-          input.dataset.key !== "emb-quantidade" &&
-          input.dataset.key !== "emb-preco"
-        ) {
-          atualizarCampoProduto(i, input);
-        }
-      });
-
-      const secao = card.querySelector(".packages");
-
-      if (secao) {
-        sincronizarEmbalagens(i, secao);
-      }
-    });
-
-    mensagem("status", "Salvando no GitHub...");
-
-    const r = await requisicao("/produtos", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sha, catalogo })
-    });
-
-    mensagem(
-      "status",
-      "Alterações salvas no GitHub! Commit: " + (r.commit || "concluído")
-    );
-
-    await carregar();
-  } catch (e) {
-    mensagem("status", "Falha ao salvar: " + e.message);
-  }
+$("salvar").onclick=async()=>{
+ try{
+  const cards=[...document.querySelectorAll("#lista .product")];
+  cards.forEach((card,i)=>{
+   card.querySelectorAll("[data-key]").forEach(input=>{if(!input.dataset.key.startsWith("emb-"))atualizarCampoProduto(i,input)});
+   const secao=card.querySelector(".packages");if(secao)sincronizarEmbalagens(i,secao);
+  });
+  // Mantém o preço legado sincronizado com a embalagem unidade (ou primeira).
+  catalogo.produtos.forEach(p=>{
+   const embs=p.embalagens||[];const base=embs.find(e=>e.id==="unidade")||embs[0];
+   if(base)p.preco=Number(base.preco)||0;
+  });
+  mensagem("status","Salvando no GitHub...");
+  const r=await requisicao("/produtos",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sha,catalogo})});
+  mensagem("status","Alterações salvas no GitHub! Commit: "+(r.commit||"concluído"));await carregar();
+ }catch(e){mensagem("status","Falha ao salvar: "+e.message)}
 };
-
-$("sair").onclick = () => {
-  token = "";
-  sha = "";
-  catalogo = null;
-
-  $("area").classList.add("hidden");
-  $("login").classList.remove("hidden");
-
-  mensagem("loginStatus", "Você saiu do painel.");
-};
+$("sair").onclick=()=>{token="";sha="";catalogo=null;$("area").classList.add("hidden");$("login").classList.remove("hidden");mensagem("loginStatus","Você saiu do painel")};
 </script>
 </body>
 </html>
