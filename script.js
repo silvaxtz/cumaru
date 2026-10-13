@@ -1,4 +1,3 @@
-
 "use strict";
 
 /* DEPÓSITO CUMARU — catálogo, embalagens e pedidos */
@@ -25,6 +24,7 @@ const ICONES = {
   cerveja: '<path d="M7 3h8l1 4-1 14H6L5 7zM16 8h3l1 2v5l-2 2h-3M8 10h5"/>',
   refrigerante: '<path d="M9 3h6v3l2 3-1 12H8L7 9l2-3zM9 6h6M8 10h8M10 14h4"/>',
   energetico: '<path d="m13 2-8 12h6l-1 8 9-13h-6z"/>',
+  vinho: '<path d="M8 3h8l-1 7a3 3 0 0 1-6 0L8 3zM12 13v7M8 21h8M9 7h6"/>',
   destilado: '<path d="M9 3h6v4l3 4v10H6V11l3-4zM9 7h6M7 13h10"/>',
   agua: '<path d="M12 2S5 10 5 15a7 7 0 0 0 14 0c0-5-7-13-7-13zM9 16a3 3 0 0 0 3 3"/>',
   gelo: '<path d="m12 2 8 5v10l-8 5-8-5V7zM4 7l8 5 8-5M12 12v10"/>',
@@ -35,6 +35,7 @@ const CATEGORIAS_PADRAO = [
   { nome: "Cervejas", icone: "cerveja" },
   { nome: "Refrigerantes", icone: "refrigerante" },
   { nome: "Energéticos", icone: "energetico" },
+  { nome: "Vinhos", icone: "vinho" },
   { nome: "Destilados", icone: "destilado" },
   { nome: "Águas", icone: "agua" },
   { nome: "Gelo", icone: "gelo" },
@@ -143,7 +144,7 @@ async function buscarJSON(caminho) {
   return resposta.json();
 }
 
-/* VALIDAÇÃO DA CONFIGURAÇÃO */
+/* CONFIGURAÇÃO */
 
 function validarConfiguracao(dados) {
   if (!dados || typeof dados !== "object" || Array.isArray(dados)) {
@@ -156,6 +157,7 @@ function validarConfiguracao(dados) {
   return {
     ...CONFIG_PADRAO,
     ...dados,
+
     modoEvento: dados.modoEvento === true,
 
     aumentoGeralPercentual: Number.isFinite(percentual)
@@ -170,19 +172,22 @@ function validarConfiguracao(dados) {
   };
 }
 
-/* VALIDAÇÃO DOS PRODUTOS E EMBALAGENS */
+/* PRODUTOS E EMBALAGENS */
 
 function prepararEmbalagens(produto) {
   if (Array.isArray(produto.embalagens) && produto.embalagens.length) {
     return produto.embalagens
-      .filter((embalagem) => embalagem && typeof embalagem === "object")
+      .filter((embalagem) =>
+        embalagem && typeof embalagem === "object"
+      )
       .map((embalagem, indice) => {
-        const precoInformado = embalagem.preco;
-        const preco = precoInformado === null ||
-          precoInformado === undefined ||
-          precoInformado === ""
+        const informado = embalagem.preco;
+
+        const preco = informado === null ||
+          informado === undefined ||
+          informado === ""
           ? null
-          : Number(precoInformado);
+          : Number(informado);
 
         const precoValido = preco !== null &&
           Number.isFinite(preco) &&
@@ -191,28 +196,33 @@ function prepararEmbalagens(produto) {
         return {
           id: String(embalagem.id || `embalagem-${indice + 1}`),
           nome: String(embalagem.nome || "Unidade"),
-          quantidade: Math.max(1, Number(embalagem.quantidade) || 1),
+          quantidade: Math.max(
+            1,
+            Number(embalagem.quantidade) || 1
+          ),
           preco: precoValido ? preco : null,
           disponivel: precoValido && embalagem.disponivel !== false
         };
       });
   }
 
-  // Compatibilidade com o formato antigo: apenas uma unidade.
   const preco = Number(produto.preco);
+  const valido = Number.isFinite(preco) && preco >= 0;
 
   return [{
     id: "unidade",
     nome: "Unidade",
     quantidade: 1,
-    preco: Number.isFinite(preco) && preco >= 0 ? preco : null,
-    disponivel: Number.isFinite(preco) && preco >= 0
+    preco: valido ? preco : null,
+    disponivel: valido
   }];
 }
 
 function validarProdutos(dados) {
   if (!dados || !Array.isArray(dados.produtos)) {
-    throw new Error("O arquivo produtos.json não contém uma lista válida.");
+    throw new Error(
+      "O arquivo produtos.json não contém uma lista válida."
+    );
   }
 
   const ids = new Set();
@@ -248,6 +258,7 @@ function validarProdutos(dados) {
     imagem: String(produto.imagem || ""),
     disponivel: produto.disponivel !== false,
     destaque: produto.destaque === true,
+
     aumentoEvento:
       produto.aumentoEvento === null ||
       produto.aumentoEvento === undefined ||
@@ -269,10 +280,14 @@ function obterPrecoEmbalagem(produto, embalagem) {
 
   let percentual = configuracao.aumentoGeralPercentual;
 
-  if (produto.aumentoEvento !== null) {
-    if (Number.isFinite(produto.aumentoEvento)) {
-      percentual = Math.max(0, Math.min(500, produto.aumentoEvento));
-    }
+  if (
+    produto.aumentoEvento !== null &&
+    Number.isFinite(produto.aumentoEvento)
+  ) {
+    percentual = Math.max(
+      0,
+      Math.min(500, produto.aumentoEvento)
+    );
   }
 
   return Math.round(
@@ -306,7 +321,10 @@ function separarChaveCarrinho(chave) {
   const posicao = chave.lastIndexOf("::");
 
   if (posicao === -1) {
-    return { produtoId: chave, embalagemId: "unidade" };
+    return {
+      produtoId: chave,
+      embalagemId: "unidade"
+    };
   }
 
   return {
@@ -334,7 +352,9 @@ function obterSubtotal() {
     const embalagem = obterEmbalagem(produto, embalagemId);
     const preco = obterPrecoEmbalagem(produto, embalagem);
 
-    if (preco !== null) total += preco * quantidade;
+    if (preco !== null) {
+      total += preco * quantidade;
+    }
   }
 
   return Math.round((total + Number.EPSILON) * 100) / 100;
@@ -343,9 +363,9 @@ function obterSubtotal() {
 /* CATEGORIAS */
 
 function obterCategorias() {
-  const existentes = [...new Set(
-    produtos.map((produto) => produto.categoria)
-  )];
+  const existentes = [
+    ...new Set(produtos.map((produto) => produto.categoria))
+  ];
 
   const conhecidas = CATEGORIAS_PADRAO.filter(
     (categoria) => existentes.includes(categoria.nome)
@@ -355,7 +375,10 @@ function obterCategorias() {
     .filter((nome) => !CATEGORIAS_PADRAO.some(
       (categoria) => categoria.nome === nome
     ))
-    .map((nome) => ({ nome, icone: "outros" }));
+    .map((nome) => ({
+      nome,
+      icone: "outros"
+    }));
 
   return [...conhecidas, ...adicionais];
 }
@@ -375,12 +398,15 @@ function renderizarCategorias() {
         <strong>Todos os produtos</strong>
       </button>
     `,
+
     ...categorias.map((categoria) => `
       <button
         class="categoria-card ${categoriaAtiva === categoria.nome ? "ativa" : ""}"
         type="button"
         data-categoria="${escaparHTML(categoria.nome)}">
-        <span class="categoria-icone">${iconeCategoria(categoria.nome)}</span>
+        <span class="categoria-icone">
+          ${iconeCategoria(categoria.nome)}
+        </span>
         <strong>${escaparHTML(categoria.nome)}</strong>
       </button>
     `)
@@ -398,7 +424,7 @@ function renderizarCategorias() {
   elementos.filtro.value = categoriaAtiva;
 }
 
-/* PRODUTOS */
+/* EXIBIÇÃO DOS PRODUTOS */
 
 function produtoCorrespondeFiltro(produto) {
   const texto = [
@@ -408,7 +434,8 @@ function produtoCorrespondeFiltro(produto) {
   ].join(" ").toLocaleLowerCase("pt-BR");
 
   return (
-    (categoriaAtiva === "todas" || produto.categoria === categoriaAtiva) &&
+    (categoriaAtiva === "todas" ||
+      produto.categoria === categoriaAtiva) &&
     texto.includes(buscaAtual.toLocaleLowerCase("pt-BR"))
   );
 }
@@ -461,10 +488,13 @@ function renderizarProdutos() {
       : '<span class="produto-placeholder">C</span>';
 
     const embalagensValidas = produto.embalagens.filter(
-      (embalagem) => embalagem.preco !== null
+      (embalagem) =>
+        embalagem.preco !== null &&
+        embalagem.disponivel
     );
 
     const primeiraDisponivel = embalagensValidas[0];
+
     const precoInicial = primeiraDisponivel
       ? obterPrecoEmbalagem(produto, primeiraDisponivel)
       : null;
@@ -476,8 +506,11 @@ function renderizarProdutos() {
 
       let nome = embalagem.nome;
 
-      if (semPreco) nome += " — preço não cadastrado";
-      else if (semEstoque) nome += " — indisponível";
+      if (semPreco) {
+        nome += " — preço não cadastrado";
+      } else if (semEstoque) {
+        nome += " — indisponível";
+      }
 
       return `
         <option
@@ -512,16 +545,20 @@ function renderizarProdutos() {
             <select
               class="seletor-embalagem"
               data-embalagem-produto="${escaparHTML(produto.id)}"
-              ${embalagensValidas.length === 0 ? "disabled" : ""}>
+              ${embalagensValidas.length === 0 || indisponivel ? "disabled" : ""}>
               ${opcoesEmbalagem}
             </select>
           </label>
 
           <div class="produto-rodape">
             <div class="produto-preco">
-              <small>${configuracao.modoEvento ? "Preço de evento" : "Preço"}</small>
+              <small>
+                ${configuracao.modoEvento ? "Preço de evento" : "Preço"}
+              </small>
               <strong data-preco-produto="${escaparHTML(produto.id)}">
-                ${precoInicial === null ? "Preço a consultar" : formatarDinheiro(precoInicial)}
+                ${precoInicial === null
+                  ? "Preço a consultar"
+                  : formatarDinheiro(precoInicial)}
               </strong>
             </div>
 
@@ -545,9 +582,11 @@ function renderizarProdutos() {
 function atualizarPrecoCard(produtoId, embalagemId) {
   const produto = obterProduto(produtoId);
   const embalagem = obterEmbalagem(produto, embalagemId);
+
   const precoElemento = document.querySelector(
     `[data-preco-produto="${CSS.escape(produtoId)}"]`
   );
+
   const botao = document.querySelector(
     `[data-adicionar="${CSS.escape(produtoId)}"]`
   );
@@ -555,7 +594,9 @@ function atualizarPrecoCard(produtoId, embalagemId) {
   if (!produto || !embalagem || !precoElemento) return;
 
   const preco = obterPrecoEmbalagem(produto, embalagem);
-  const disponivel = produto.disponivel &&
+
+  const disponivel =
+    produto.disponivel &&
     embalagem.disponivel &&
     preco !== null;
 
@@ -565,6 +606,7 @@ function atualizarPrecoCard(produtoId, embalagemId) {
 
   if (botao) {
     botao.disabled = !disponivel;
+
     botao.setAttribute(
       "aria-label",
       `Adicionar ${produto.nome} — ${embalagem.nome}`
@@ -598,6 +640,7 @@ function adicionarProduto(produtoId, embalagemId) {
   carrinho.set(chave, (carrinho.get(chave) || 0) + 1);
 
   renderizarCarrinho();
+
   notificar(`${produto.nome} — ${embalagem.nome} adicionado ao pedido.`);
 }
 
@@ -629,7 +672,8 @@ function renderizarCarrinho() {
   }
 
   if (elementos.subtotalCarrinho) {
-    elementos.subtotalCarrinho.textContent = formatarDinheiro(obterSubtotal());
+    elementos.subtotalCarrinho.textContent =
+      formatarDinheiro(obterSubtotal());
   }
 
   if (elementos.finalizarPedido) {
@@ -696,7 +740,7 @@ function renderizarCarrinho() {
     }).join("");
 }
 
-/* PAINEL LATERAL */
+/* PAINEL DO CARRINHO */
 
 function abrirCarrinho() {
   elementos.painelCarrinho?.classList.add("aberto");
@@ -723,7 +767,7 @@ function fecharCarrinho() {
   document.body.classList.remove("modal-aberto");
 }
 
-/* WHATSAPP */
+/* FINALIZAÇÃO PELO WHATSAPP */
 
 function finalizarPedido() {
   if (carrinho.size === 0) {
@@ -757,10 +801,17 @@ function finalizarPedido() {
       return;
     }
 
+    if (!embalagem.disponivel) {
+      notificar(`A embalagem ${embalagem.nome} está indisponível.`);
+      return;
+    }
+
     const preco = obterPrecoEmbalagem(produto, embalagem);
 
     if (preco === null) {
-      notificar(`O preço de ${produto.nome} — ${embalagem.nome} precisa ser cadastrado.`);
+      notificar(
+        `O preço de ${produto.nome} — ${embalagem.nome} precisa ser cadastrado.`
+      );
       return;
     }
 
@@ -777,7 +828,9 @@ function finalizarPedido() {
   }
 
   linhas.push("");
-  linhas.push("Por favor, confirme a disponibilidade, entrega e pagamento.");
+  linhas.push(
+    "Por favor, confirme a disponibilidade, entrega e pagamento."
+  );
 
   const url =
     `https://wa.me/${configuracao.whatsapp}?text=` +
@@ -786,7 +839,7 @@ function finalizarPedido() {
   window.open(url, "_blank", "noopener,noreferrer");
 }
 
-/* ATUALIZAÇÃO AUTOMÁTICA */
+/* ATUALIZAÇÃO DA CONFIGURAÇÃO */
 
 async function atualizarConfiguracao() {
   try {
@@ -794,7 +847,9 @@ async function atualizarConfiguracao() {
       await buscarJSON(ARQUIVOS.config)
     );
 
-    const mudou = JSON.stringify(nova) !== JSON.stringify(configuracao);
+    const mudou =
+      JSON.stringify(nova) !== JSON.stringify(configuracao);
+
     configuracao = nova;
 
     if (elementos.avisoEvento) {
@@ -831,6 +886,8 @@ async function atualizarConfiguracao() {
   }
 }
 
+/* ATUALIZAÇÃO DOS PRODUTOS */
+
 async function atualizarProdutos() {
   try {
     produtos = validarProdutos(
@@ -842,7 +899,18 @@ async function atualizarProdutos() {
       const produto = obterProduto(produtoId);
       const embalagem = obterEmbalagem(produto, embalagemId);
 
-      if (!produto || !embalagem || embalagem.preco === null) {
+      const indisponivel =
+        produto &&
+        !produto.disponivel &&
+        !configuracao.permitirProdutosIndisponiveisNoCarrinho;
+
+      if (
+        !produto ||
+        !embalagem ||
+        embalagem.preco === null ||
+        !embalagem.disponivel ||
+        indisponivel
+      ) {
         carrinho.delete(chave);
       }
     }
@@ -878,7 +946,7 @@ function iniciarAtualizacaoAutomatica() {
   }, configuracao.atualizacaoSegundos * 1000);
 }
 
-/* EVENTOS */
+/* EVENTOS DA PÁGINA */
 
 function configurarEventos() {
   elementos.buscar?.addEventListener("input", (evento) => {
@@ -922,6 +990,7 @@ function configurarEventos() {
     if (!botao) return;
 
     const produtoId = botao.dataset.adicionar;
+
     const seletor = elementos.gradeProdutos.querySelector(
       `[data-embalagem-produto="${CSS.escape(produtoId)}"]`
     );
@@ -953,10 +1022,15 @@ function configurarEventos() {
   elementos.fundoModal?.addEventListener("click", fecharCarrinho);
   elementos.finalizarPedido?.addEventListener("click", finalizarPedido);
 
-  $("#abrir-carrinho-contato")?.addEventListener("click", abrirCarrinho);
+  $("#abrir-carrinho-contato")?.addEventListener(
+    "click",
+    abrirCarrinho
+  );
 
   document.addEventListener("keydown", (evento) => {
-    if (evento.key === "Escape") fecharCarrinho();
+    if (evento.key === "Escape") {
+      fecharCarrinho();
+    }
   });
 
   if (elementos.anoAtual) {
