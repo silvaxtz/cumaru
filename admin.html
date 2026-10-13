@@ -1,0 +1,270 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Administração | Depósito Cumaru</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f4f5f7;color:#202124;font-family:Arial,sans-serif}
+header{background:#202124;color:white;padding:20px}
+header h1{margin:0;font-size:22px}
+main{max-width:1000px;margin:25px auto;padding:0 15px}
+.panel{background:white;border-radius:12px;padding:20px;margin-bottom:18px;box-shadow:0 2px 10px #0000000d}
+input,textarea,select,button{font:inherit}
+input,textarea,select{width:100%;padding:11px;border:1px solid #ccc;border-radius:7px;margin:5px 0 12px}
+button{border:0;border-radius:7px;padding:12px 16px;background:#202124;color:white;cursor:pointer;margin:4px 4px 4px 0}
+button.secondary{background:#e8e8e8;color:#222}
+button.danger{background:#a62626}
+label{font-size:13px;font-weight:bold}
+.product{border:1px solid #ddd;border-radius:10px;padding:16px;margin:14px 0}
+.product h3{margin-top:0}
+.status{margin:12px 0;white-space:pre-wrap}
+.hidden{display:none}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+small{color:#666}
+</style>
+</head>
+<body>
+<header><h1>Depósito Cumaru — Painel administrativo</h1></header>
+<main>
+  <section id="login" class="panel">
+    <h2>Acesso administrativo</h2>
+    <label for="senha">Senha de administrador</label>
+    <input id="senha" type="password" autocomplete="current-password" placeholder="Digite sua senha">
+    <button id="entrar">Entrar</button>
+    <div id="loginStatus" class="status"></div>
+  </section>
+
+  <section id="area" class="hidden">
+    <div class="panel">
+      <h2>Produtos</h2>
+      <p><small>Edite os dados e clique em Salvar alterações para atualizar o arquivo no GitHub.</small></p>
+      <button id="novo">+ Adicionar produto</button>
+      <button id="salvar">Salvar alterações</button>
+      <button id="sair" class="secondary">Sair</button>
+      <div id="status" class="status"></div>
+    </div>
+    <div id="lista"></div>
+  </section>
+</main>
+<script>
+const API = "https://cumaru-deposito.psilvaa149.workers.dev";
+let token = "";
+let sha = "";
+let catalogo = null;
+
+const $ = id => document.getElementById(id);
+
+function mensagem(id, texto) {
+  $(id).textContent = texto;
+}
+
+async function requisicao(caminho, opcoes = {}) {
+  const r = await fetch(API + caminho, {
+    ...opcoes,
+    headers: {
+      ...(opcoes.headers || {}),
+      ...(token ? { Authorization: "Bearer " + token } : {})
+    }
+  });
+  const dados = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(dados.erro || "Erro HTTP " + r.status);
+  return dados;
+}
+
+$("entrar").onclick = async () => {
+  mensagem("loginStatus", "Verificando acesso...");
+  try {
+    const r = await requisicao("/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ senha: $("senha").value })
+    });
+    token = r.token;
+    $("senha").value = "";
+    await carregar();
+    $("login").classList.add("hidden");
+    $("area").classList.remove("hidden");
+  } catch (e) {
+    mensagem("loginStatus", "Não foi possível entrar: " + e.message);
+  }
+};
+
+async function carregar() {
+  mensagem("status", "Carregando catálogo...");
+  const r = await requisicao("/produtos");
+  catalogo = r.produtos;
+  sha = r.sha;
+  if (!catalogo || !Array.isArray(catalogo.produtos)) {
+    throw new Error("Formato de catálogo inesperado.");
+  }
+  renderizar();
+  mensagem("status", catalogo.produtos.length + " produtos carregados.");
+}
+
+function campo(rotulo, valor, chave, tipo = "text") {
+  const label = document.createElement("label");
+  label.textContent = rotulo;
+  const input = document.createElement("input");
+  input.type = tipo;
+  input.dataset.key = chave;
+  input.value = valor == null ? "" : String(valor);
+  if (tipo === "number") input.step = "0.01";
+  label.appendChild(input);
+  return label;
+}
+
+function renderizar() {
+  const lista = $("lista");
+  lista.replaceChildren();
+
+  catalogo.produtos.forEach((p, i) => {
+    const card = document.createElement("section");
+    card.className = "panel product";
+
+    const titulo = document.createElement("h3");
+    titulo.textContent = (p.nome || "Produto sem nome") + " (#" + (i + 1) + ")";
+    card.appendChild(titulo);
+
+    const grid = document.createElement("div");
+    grid.className = "grid";
+    grid.append(
+      campo("Nome", p.nome, "nome"),
+      campo("Categoria", p.categoria, "categoria"),
+      campo("Preço", p.preco, "preco", "number"),
+      campo("Imagem (caminho ou URL)", p.imagem, "imagem")
+    );
+
+    const desc = document.createElement("label");
+    desc.textContent = "Descrição";
+    const textarea = document.createElement("textarea");
+    textarea.dataset.key = "descricao";
+    textarea.value = p.descricao || "";
+    desc.appendChild(textarea);
+    grid.appendChild(desc);
+
+    const disponibilidade = document.createElement("label");
+    disponibilidade.textContent = "Disponibilidade";
+    const select = document.createElement("select");
+    select.dataset.key = "disponivel";
+    [["true","Disponível"],["false","Indisponível"]].forEach(([v,t]) => {
+      const opt = document.createElement("option");
+      opt.value = v;
+      opt.textContent = t;
+      select.appendChild(opt);
+    });
+    select.value = p.disponivel === false ? "false" : "true";
+    disponibilidade.appendChild(select);
+    grid.appendChild(disponibilidade);
+
+    card.appendChild(grid);
+
+    const embalagens = document.createElement("label");
+    embalagens.textContent = "Embalagens (JSON, se houver)";
+    const emb = document.createElement("textarea");
+    emb.dataset.key = "embalagens";
+    emb.value = JSON.stringify(p.embalagens ?? [], null, 2);
+    embalagens.appendChild(emb);
+    card.appendChild(embalagens);
+
+    const excluir = document.createElement("button");
+    excluir.className = "danger";
+    excluir.textContent = "Excluir produto";
+    excluir.onclick = () => {
+      if (confirm("Excluir " + (p.nome || "este produto") + "?")) {
+        catalogo.produtos.splice(i, 1);
+        renderizar();
+        mensagem("status", "Produto removido da edição. Clique em Salvar alterações para confirmar.");
+      }
+    };
+    card.appendChild(card.firstElementChild);
+    card.appendChild(excluir);
+    card.insertBefore(grid, excluir);
+    card.insertBefore(embalagens, excluir);
+    lista.appendChild(card);
+  });
+
+  lista.querySelectorAll(".product").forEach((card, i) => {
+    card.querySelectorAll("[data-key]").forEach(input => {
+      input.addEventListener("change", () => {
+        const key = input.dataset.key;
+        if (key === "preco") {
+          const n = Number(input.value);
+          catalogo.produtos[i][key] = n;
+        } else if (key === "disponivel") {
+          catalogo.produtos[i][key] = input.value === "true";
+        } else if (key === "embalagens") {
+          try {
+            catalogo.produtos[i][key] = JSON.parse(input.value);
+          } catch {
+            mensagem("status", "Confira o JSON das embalagens do produto " + (i + 1));
+          }
+        } else {
+          catalogo.produtos[i][key] = input.value;
+        }
+      });
+      input.addEventListener("input", () => {
+        const key = input.dataset.key;
+        if (key === "preco") catalogo.produtos[i][key] = Number(input.value);
+        else if (key === "disponivel") catalogo.produtos[i][key] = input.value === "true";
+        else if (key !== "embalagens") catalogo.produtos[i][key] = input.value;
+      });
+    });
+  });
+}
+
+$("novo").onclick = () => {
+  catalogo.produtos.push({
+    nome: "",
+    categoria: "",
+    descricao: "",
+    preco: 0,
+    embalagens: [],
+    imagem: "",
+    disponivel: true
+  });
+  renderizar();
+  mensagem("status", "Novo produto adicionado. Preencha os campos e salve.");
+};
+
+$("salvar").onclick = async () => {
+  try {
+    // Captura também alterações que ainda não dispararam change.
+    document.querySelectorAll("#lista [data-key]").forEach(input => {
+      const card = input.closest(".product");
+      const cards = [...document.querySelectorAll("#lista .product")];
+      const i = cards.indexOf(card);
+      if (i < 0) return;
+      const key = input.dataset.key;
+      if (key === "preco") catalogo.produtos[i][key] = Number(input.value);
+      else if (key === "disponivel") catalogo.produtos[i][key] = input.value === "true";
+      else if (key === "embalagens") catalogo.produtos[i][key] = JSON.parse(input.value || "[]");
+      else catalogo.produtos[i][key] = input.value;
+    });
+
+    mensagem("status", "Salvando no GitHub...");
+    const r = await requisicao("/produtos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sha, catalogo })
+    });
+    mensagem("status", "Alterações salvas no GitHub! Commit: " + (r.commit || "concluído"));
+    await carregar();
+  } catch (e) {
+    mensagem("status", "Falha ao salvar: " + e.message);
+  }
+};
+
+$("sair").onclick = () => {
+  token = "";
+  sha = "";
+  catalogo = null;
+  $("area").classList.add("hidden");
+  $("login").classList.remove("hidden");
+  mensagem("loginStatus", "Você saiu do painel.");
+};
+</script>
+</body>
+</html>
