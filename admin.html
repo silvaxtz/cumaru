@@ -60,3 +60,388 @@ header h1{font-size:19px}
 <div id="lista"></div>
 </section>
 </main>
+<script>
+const API = "https://cumaru-deposito.psilvaa149.workers.dev";
+let token = "", sha = "", catalogo = null;
+
+const $ = id => document.getElementById(id);
+
+function mensagem(id, texto) {
+  $(id).textContent = texto;
+}
+
+async function requisicao(caminho, opcoes = {}) {
+  const r = await fetch(API + caminho, {
+    ...opcoes,
+    headers: {
+      ...(opcoes.headers || {}),
+      ...(token ? { Authorization: "Bearer " + token } : {})
+    }
+  });
+
+  const dados = await r.json().catch(() => ({}));
+
+  if (!r.ok) {
+    throw new Error(dados.erro || "Erro HTTP " + r.status);
+  }
+
+  return dados;
+}
+
+$("entrar").onclick = async () => {
+  mensagem("loginStatus", "Verificando acesso...");
+
+  try {
+    const r = await requisicao("/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ senha: $("senha").value })
+    });
+
+    token = r.token;
+    $("senha").value = "";
+
+    await carregar();
+
+    $("login").classList.add("hidden");
+    $("area").classList.remove("hidden");
+  } catch (e) {
+    mensagem("loginStatus", "Não foi possível entrar: " + e.message);
+  }
+};
+
+async function carregar() {
+  mensagem("status", "Carregando catálogo...");
+
+  const r = await requisicao("/produtos");
+
+  catalogo = r.produtos;
+  sha = r.sha;
+
+  if (!catalogo || !Array.isArray(catalogo.produtos)) {
+    throw new Error("Formato de catálogo inesperado.");
+  }
+
+  renderizar();
+
+  mensagem("status", catalogo.produtos.length + " produtos carregados.");
+}
+
+function campo(rotulo, valor, chave, tipo = "text") {
+  const label = document.createElement("label");
+  label.textContent = rotulo;
+
+  const input = document.createElement("input");
+  input.type = tipo;
+  input.dataset.key = chave;
+  input.value = valor == null ? "" : String(valor);
+
+  if (tipo === "number") {
+    input.step = "0.01";
+    input.inputMode = "decimal";
+  }
+
+  label.appendChild(input);
+  return label;
+}
+
+function normalizarEmbalagens(produto) {
+  let lista = produto.embalagens;
+
+  if (typeof lista === "string") {
+    try {
+      lista = JSON.parse(lista);
+    } catch {
+      lista = [];
+    }
+  }
+
+  if (!Array.isArray(lista)) return [];
+
+  return lista.map(item => ({
+    ...item,
+    quantidade: item.quantidade ?? item.qtd ?? item.nome ?? 1,
+    preco: Number(item.preco ?? item.valor ?? produto.preco ?? 0)
+  }));
+}
+
+function sincronizarEmbalagens(indice, secao) {
+  if (!catalogo?.produtos[indice]) return;
+
+  catalogo.produtos[indice].embalagens = [
+    ...secao.querySelectorAll(".package-row")
+  ].map(linha => {
+    const q = linha.querySelector(
+      '[data-key="emb-quantidade"]'
+    ).value.trim();
+
+    const preco = linha.querySelector(
+      '[data-key="emb-preco"]'
+    ).value;
+
+    return {
+      quantidade: q === ""
+        ? 1
+        : (Number.isFinite(Number(q)) ? Number(q) : q),
+      preco: Number(preco || 0)
+    };
+  });
+}
+
+function criarEditorEmbalagens(produto, indice) {
+  const secao = document.createElement("section");
+  secao.className = "packages";
+
+  const titulo = document.createElement("h4");
+  titulo.className = "package-title";
+  titulo.textContent = "Embalagens e preços";
+  secao.appendChild(titulo);
+
+  const ajuda = document.createElement("small");
+  ajuda.className = "package-help";
+  ajuda.textContent =
+    "Informe a quantidade ou o nome da embalagem e o preço correspondente.";
+  secao.appendChild(ajuda);
+
+  const linhas = document.createElement("div");
+  linhas.className = "package-list";
+  secao.appendChild(linhas);
+
+  function adicionarLinha(item = {
+    quantidade: 1,
+    preco: produto.preco ?? 0
+  }) {
+    const linha = document.createElement("div");
+    linha.className = "package-row";
+
+    const quantidade = campo(
+      "Quantidade / embalagem",
+      item.quantidade ?? 1,
+      "emb-quantidade",
+      "text"
+    );
+
+    const preco = campo(
+      "Preço (R$)",
+      item.preco ?? 0,
+      "emb-preco",
+      "number"
+    );
+
+    preco.querySelector("input").step = "0.01";
+
+    const remover = document.createElement("button");
+    remover.type = "button";
+    remover.className = "remove-package";
+    remover.textContent = "Remover";
+
+    remover.onclick = () => {
+      linha.remove();
+      sincronizarEmbalagens(indice, secao);
+    };
+
+    [quantidade, preco].forEach(campo => {
+      campo.querySelector("input").addEventListener("input", () => {
+        sincronizarEmbalagens(indice, secao);
+      });
+    });
+
+    linha.append(quantidade, preco, remover);
+    linhas.appendChild(linha);
+
+    sincronizarEmbalagens(indice, secao);
+  }
+
+  const adicionar = document.createElement("button");
+  adicionar.type = "button";
+  adicionar.className = "add-package";
+  adicionar.textContent = "+ Adicionar embalagem";
+
+  adicionar.onclick = () => {
+    adicionarLinha({
+      quantidade: 1,
+      preco: produto.preco ?? 0
+    });
+  };
+
+  secao.appendChild(adicionar);
+
+  normalizarEmbalagens(produto).forEach(adicionarLinha);
+
+  return secao;
+}
+function atualizarCampoProduto(indice, input) {
+  const produto = catalogo.produtos[indice];
+  const chave = input.dataset.key;
+
+  if (chave === "preco") {
+    produto.preco = Number(input.value || 0);
+  } else if (chave === "disponivel") {
+    produto.disponivel = input.value === "true";
+  } else if (
+    chave !== "emb-quantidade" &&
+    chave !== "emb-preco"
+  ) {
+    produto[chave] = input.value;
+  }
+}
+
+function renderizar() {
+  const lista = $("lista");
+  lista.replaceChildren();
+
+  catalogo.produtos.forEach((p, i) => {
+    const card = document.createElement("section");
+    card.className = "panel product";
+
+    const titulo = document.createElement("h3");
+    titulo.textContent =
+      (p.nome || "Produto sem nome") + " (#" + (i + 1) + ")";
+    card.appendChild(titulo);
+
+    const grid = document.createElement("div");
+    grid.className = "grid";
+
+    grid.append(
+      campo("Nome", p.nome, "nome"),
+      campo("Categoria", p.categoria, "categoria"),
+      campo("Preço principal (R$)", p.preco, "preco", "number"),
+      campo("Imagem (caminho ou URL)", p.imagem, "imagem")
+    );
+
+    const desc = document.createElement("label");
+    desc.textContent = "Descrição";
+
+    const textarea = document.createElement("textarea");
+    textarea.dataset.key = "descricao";
+    textarea.value = p.descricao || "";
+
+    desc.appendChild(textarea);
+    grid.appendChild(desc);
+
+    const disponibilidade = document.createElement("label");
+    disponibilidade.textContent = "Disponibilidade";
+
+    const select = document.createElement("select");
+    select.dataset.key = "disponivel";
+
+    [["true", "Disponível"], ["false", "Indisponível"]]
+      .forEach(([valor, texto]) => {
+        const opcao = document.createElement("option");
+        opcao.value = valor;
+        opcao.textContent = texto;
+        select.appendChild(opcao);
+      });
+
+    select.value = p.disponivel === false ? "false" : "true";
+    disponibilidade.appendChild(select);
+    grid.appendChild(disponibilidade);
+
+    card.appendChild(grid);
+    card.appendChild(criarEditorEmbalagens(p, i));
+
+    const excluir = document.createElement("button");
+    excluir.className = "danger";
+    excluir.textContent = "Excluir produto";
+
+    excluir.onclick = () => {
+      if (confirm("Excluir " + (p.nome || "este produto") + "?")) {
+        catalogo.produtos.splice(i, 1);
+        renderizar();
+        mensagem(
+          "status",
+          "Produto removido da edição. Clique em Salvar alterações para confirmar."
+        );
+      }
+    };
+
+    card.appendChild(excluir);
+    lista.appendChild(card);
+  });
+
+  lista.querySelectorAll(".product").forEach((card, i) => {
+    card.querySelectorAll("[data-key]").forEach(input => {
+      if (
+        input.dataset.key === "emb-quantidade" ||
+        input.dataset.key === "emb-preco"
+      ) return;
+
+      input.addEventListener("input", () => {
+        atualizarCampoProduto(i, input);
+      });
+
+      input.addEventListener("change", () => {
+        atualizarCampoProduto(i, input);
+      });
+    });
+  });
+}
+
+$("novo").onclick = () => {
+  catalogo.produtos.push({
+    nome: "",
+    categoria: "",
+    descricao: "",
+    preco: 0,
+    embalagens: [],
+    imagem: "",
+    disponivel: true
+  });
+
+  renderizar();
+  mensagem("status", "Novo produto adicionado. Preencha os campos e salve.");
+};
+
+$("salvar").onclick = async () => {
+  try {
+    const cards = [...document.querySelectorAll("#lista .product")];
+
+    cards.forEach((card, i) => {
+      card.querySelectorAll("[data-key]").forEach(input => {
+        if (
+          input.dataset.key !== "emb-quantidade" &&
+          input.dataset.key !== "emb-preco"
+        ) {
+          atualizarCampoProduto(i, input);
+        }
+      });
+
+      const secao = card.querySelector(".packages");
+
+      if (secao) {
+        sincronizarEmbalagens(i, secao);
+      }
+    });
+
+    mensagem("status", "Salvando no GitHub...");
+
+    const r = await requisicao("/produtos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sha, catalogo })
+    });
+
+    mensagem(
+      "status",
+      "Alterações salvas no GitHub! Commit: " + (r.commit || "concluído")
+    );
+
+    await carregar();
+  } catch (e) {
+    mensagem("status", "Falha ao salvar: " + e.message);
+  }
+};
+
+$("sair").onclick = () => {
+  token = "";
+  sha = "";
+  catalogo = null;
+
+  $("area").classList.add("hidden");
+  $("login").classList.remove("hidden");
+
+  mensagem("loginStatus", "Você saiu do painel.");
+};
+</script>
+</body>
+</html>
