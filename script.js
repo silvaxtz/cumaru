@@ -1,10 +1,10 @@
-```javascript
+
 "use strict";
 
-/* =========================================
+/* ==========================================
    DEPÓSITO CUMARU
-   Catálogo, preços, carrinho e WhatsApp
-========================================= */
+   Produtos, categorias, preços e carrinho
+========================================== */
 
 const ARQUIVOS = {
   produtos: "./produtos.json",
@@ -19,8 +19,7 @@ const CONFIG_PADRAO = {
   atualizacaoSegundos: 30,
   moeda: "BRL",
   mensagemEvento: "Preços especiais para o evento de hoje!",
-  mensagemWhatsApp:
-    "Olá! Gostaria de fazer um pedido no Depósito Cumaru.",
+  mensagemWhatsApp: "Olá! Gostaria de fazer um pedido no Depósito Cumaru.",
   endereco: "",
   permitirProdutosIndisponiveisNoCarrinho: false
 };
@@ -40,46 +39,33 @@ let configuracao = { ...CONFIG_PADRAO };
 let carrinho = new Map();
 let categoriaAtiva = "todas";
 let buscaAtual = "";
-
-let timerAtualizacao = null;
+let timerConfiguracao = null;
 let timerNotificacao = null;
-let carregando = false;
 
 const $ = (seletor) => document.querySelector(seletor);
 
 const elementos = {
   avisoEvento: $("#aviso-evento"),
-  textoAvisoEvento: $("#texto-aviso-evento"),
-
   listaCategorias: $("#lista-categorias"),
   gradeProdutos: $("#grade-produtos"),
-  mensagemCatalogo: $("#mensagem-catalogo"),
-
+  estadoProdutos: $("#estado-produtos"),
+  quantidadeProdutos: $("#quantidade-produtos"),
   buscar: $("#buscar-produto"),
   filtro: $("#filtro-categoria"),
-
   abrirCarrinho: $("#abrir-carrinho"),
-  abrirCarrinhoContato: $("#abrir-carrinho-contato"),
   fecharCarrinho: $("#fechar-carrinho"),
-
   painelCarrinho: $("#painel-carrinho"),
   fundoModal: $("#fundo-modal"),
-
   itensCarrinho: $("#itens-carrinho"),
   contadorCarrinho: $("#contador-carrinho"),
   subtotalCarrinho: $("#subtotal-carrinho"),
   finalizarPedido: $("#finalizar-pedido"),
-
   notificacao: $("#notificacao"),
-
   linkWhatsappRodape: $("#link-whatsapp-rodape"),
-  enderecoRodape: $("#endereco-rodape"),
   anoAtual: $("#ano-atual")
 };
 
-/* =========================================
-   FUNÇÕES AUXILIARES
-========================================= */
+/* SEGURANÇA E FORMATAÇÃO */
 
 function escaparHTML(valor) {
   return String(valor ?? "").replace(/[&<>"']/g, (caractere) => ({
@@ -94,82 +80,49 @@ function escaparHTML(valor) {
 function formatarDinheiro(valor) {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
-    currency: configuracao.moeda
+    currency: configuracao.moeda || "BRL"
   }).format(valor);
-}
-
-function arredondarDinheiro(valor) {
-  return Math.round((valor + Number.EPSILON) * 100) / 100;
 }
 
 function notificar(mensagem) {
   if (!elementos.notificacao) return;
 
   elementos.notificacao.textContent = mensagem;
-  elementos.notificacao.hidden = false;
   elementos.notificacao.classList.add("visivel");
 
   clearTimeout(timerNotificacao);
 
   timerNotificacao = setTimeout(() => {
     elementos.notificacao.classList.remove("visivel");
-    elementos.notificacao.hidden = true;
-  }, 3000);
+  }, 2800);
 }
 
 async function buscarJSON(caminho) {
   const separador = caminho.includes("?") ? "&" : "?";
   const url = `${caminho}${separador}_=${Date.now()}`;
 
-  const resposta = await fetch(url, {
-    cache: "no-store"
-  });
+  const resposta = await fetch(url, { cache: "no-store" });
 
   if (!resposta.ok) {
-    throw new Error(
-      `Não foi possível carregar ${caminho}. HTTP ${resposta.status}`
-    );
+    throw new Error(`Não foi possível carregar ${caminho}`);
   }
 
   return resposta.json();
 }
 
-/* =========================================
-   CONFIGURAÇÕES
-========================================= */
+/* CONFIGURAÇÕES */
 
 function validarConfiguracao(dados) {
   if (!dados || typeof dados !== "object" || Array.isArray(dados)) {
-    throw new Error("O arquivo config.json é inválido.");
+    throw new Error("Configuração inválida.");
   }
 
   const percentual = Number(dados.aumentoGeralPercentual);
   const intervalo = Number(dados.atualizacaoSegundos);
 
-  const moedaInformada = String(dados.moeda || "BRL").toUpperCase();
-
-  let moedaValida = "BRL";
-
-  try {
-    new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: moedaInformada
-    });
-
-    moedaValida = moedaInformada;
-  } catch {
-    console.warn("Moeda inválida. Usando BRL.");
-  }
-
   return {
     ...CONFIG_PADRAO,
     ...dados,
-
-    nomeDeposito: String(
-      dados.nomeDeposito || CONFIG_PADRAO.nomeDeposito
-    ),
-
-    whatsapp: String(dados.whatsapp || "").replace(/\D/g, ""),
 
     modoEvento: dados.modoEvento === true,
 
@@ -181,66 +134,14 @@ function validarConfiguracao(dados) {
       ? Math.max(10, Math.min(3600, intervalo))
       : CONFIG_PADRAO.atualizacaoSegundos,
 
-    moeda: moedaValida,
-
-    mensagemEvento: String(
-      dados.mensagemEvento || CONFIG_PADRAO.mensagemEvento
-    ),
-
-    mensagemWhatsApp: String(
-      dados.mensagemWhatsApp || CONFIG_PADRAO.mensagemWhatsApp
-    ),
-
-    endereco: String(dados.endereco || ""),
-
-    permitirProdutosIndisponiveisNoCarrinho:
-      dados.permitirProdutosIndisponiveisNoCarrinho === true
+    whatsapp: String(dados.whatsapp || "").replace(/\D/g, "")
   };
 }
-
-function atualizarInformacoesRodape() {
-  if (elementos.anoAtual) {
-    elementos.anoAtual.textContent = new Date().getFullYear();
-  }
-
-  if (elementos.enderecoRodape) {
-    elementos.enderecoRodape.textContent = configuracao.endereco;
-    elementos.enderecoRodape.hidden = !configuracao.endereco;
-  }
-
-  if (elementos.linkWhatsappRodape) {
-    if (configuracao.whatsapp) {
-      elementos.linkWhatsappRodape.href =
-        `https://wa.me/${configuracao.whatsapp}`;
-
-      elementos.linkWhatsappRodape.hidden = false;
-    } else {
-      elementos.linkWhatsappRodape.removeAttribute("href");
-    }
-  }
-}
-
-function atualizarAvisoEvento() {
-  if (!elementos.avisoEvento) return;
-
-  elementos.avisoEvento.hidden = !configuracao.modoEvento;
-
-  if (elementos.textoAvisoEvento) {
-    elementos.textoAvisoEvento.textContent =
-      configuracao.modoEvento
-        ? configuracao.mensagemEvento
-        : "";
-  }
-}
-
-/* =========================================
-   VALIDAÇÃO DOS PRODUTOS
-========================================= */
 
 function validarProdutos(dados) {
   if (!dados || !Array.isArray(dados.produtos)) {
     throw new Error(
-      "O produtos.json precisa conter uma lista chamada produtos."
+      "O arquivo produtos.json precisa conter uma lista chamada produtos."
     );
   }
 
@@ -268,39 +169,26 @@ function validarProdutos(dados) {
       ids.add(id);
       return true;
     })
-    .map((produto) => {
-      let aumentoEvento = null;
-
-      if (
-        produto.aumentoEvento !== null &&
-        produto.aumentoEvento !== undefined &&
-        produto.aumentoEvento !== ""
-      ) {
-        const valor = Number(produto.aumentoEvento);
-
-        aumentoEvento = Number.isFinite(valor)
-          ? Math.max(0, Math.min(500, valor))
-          : null;
-      }
-
-      return {
-        ...produto,
-        id: String(produto.id),
-        nome: String(produto.nome),
-        categoria: String(produto.categoria || "Outros"),
-        descricao: String(produto.descricao || ""),
-        preco: Number(produto.preco),
-        imagem: String(produto.imagem || ""),
-        disponivel: produto.disponivel !== false,
-        destaque: produto.destaque === true,
-        aumentoEvento
-      };
-    });
+    .map((produto) => ({
+      ...produto,
+      id: String(produto.id),
+      nome: String(produto.nome),
+      categoria: String(produto.categoria || "Outros"),
+      descricao: String(produto.descricao || ""),
+      preco: Number(produto.preco),
+      imagem: String(produto.imagem || ""),
+      disponivel: produto.disponivel !== false,
+      destaque: produto.destaque === true,
+      aumentoEvento:
+        produto.aumentoEvento === null ||
+        produto.aumentoEvento === undefined ||
+        produto.aumentoEvento === ""
+          ? null
+          : Number(produto.aumentoEvento)
+    }));
 }
 
-/* =========================================
-   PREÇOS
-========================================= */
+/* PREÇOS */
 
 function obterPreco(produto) {
   const precoOriginal = Number(produto.preco);
@@ -311,19 +199,15 @@ function obterPreco(produto) {
 
   let percentual = configuracao.aumentoGeralPercentual;
 
-  /*
-    null = usa o aumento geral.
-    0 = não aumenta o preço deste produto.
-    Outro número = usa o percentual individual.
-  */
-
   if (produto.aumentoEvento !== null) {
-    percentual = produto.aumentoEvento;
+    percentual = Number.isFinite(produto.aumentoEvento)
+      ? Math.max(0, Math.min(500, produto.aumentoEvento))
+      : percentual;
   }
 
-  return arredondarDinheiro(
-    precoOriginal * (1 + percentual / 100)
-  );
+  return Math.round(
+    (precoOriginal * (1 + percentual / 100) + Number.EPSILON) * 100
+  ) / 100;
 }
 
 function obterProduto(id) {
@@ -351,12 +235,10 @@ function obterSubtotal() {
     }
   }
 
-  return arredondarDinheiro(total);
+  return Math.round((total + Number.EPSILON) * 100) / 100;
 }
 
-/* =========================================
-   CATEGORIAS
-========================================= */
+/* CATEGORIAS */
 
 function obterCategorias() {
   const existentes = [
@@ -370,14 +252,9 @@ function obterCategorias() {
   const adicionais = existentes
     .filter(
       (nome) =>
-        !CATEGORIAS_PADRAO.some(
-          (categoria) => categoria.nome === nome
-        )
+        !CATEGORIAS_PADRAO.some((categoria) => categoria.nome === nome)
     )
-    .map((nome) => ({
-      nome,
-      icone: "🍹"
-    }));
+    .map((nome) => ({ nome, icone: "🍹" }));
 
   return [...conhecidas, ...adicionais];
 }
@@ -387,59 +264,57 @@ function renderizarCategorias() {
 
   const categorias = obterCategorias();
 
-  if (
-    categoriaAtiva !== "todas" &&
-    !categorias.some((categoria) => categoria.nome === categoriaAtiva)
-  ) {
-    categoriaAtiva = "todas";
-  }
-
   elementos.listaCategorias.innerHTML = [
     `
       <button
         class="categoria-card ${categoriaAtiva === "todas" ? "ativa" : ""}"
         type="button"
-        data-categoria="todas"
-        aria-pressed="${categoriaAtiva === "todas"}">
+        data-categoria="todas">
         <span class="categoria-icone">🛍️</span>
         <strong>Todas as bebidas</strong>
       </button>
     `,
-
-    ...categorias.map((categoria) => `
-      <button
-        class="categoria-card ${categoriaAtiva === categoria.nome ? "ativa" : ""}"
-        type="button"
-        data-categoria="${escaparHTML(categoria.nome)}"
-        aria-pressed="${categoriaAtiva === categoria.nome}">
-        <span class="categoria-icone">${escaparHTML(categoria.icone)}</span>
-        <strong>${escaparHTML(categoria.nome)}</strong>
-      </button>
-    `)
+    ...categorias.map(
+      (categoria) => `
+        <button
+          class="categoria-card ${
+            categoriaAtiva === categoria.nome ? "ativa" : ""
+          }"
+          type="button"
+          data-categoria="${escaparHTML(categoria.nome)}">
+          <span class="categoria-icone">${escaparHTML(categoria.icone)}</span>
+          <strong>${escaparHTML(categoria.nome)}</strong>
+        </button>
+      `
+    )
   ].join("");
 
   elementos.filtro.innerHTML = `
     <option value="todas">Todas as categorias</option>
-    ${categorias.map((categoria) => `
-      <option value="${escaparHTML(categoria.nome)}">
-        ${escaparHTML(categoria.nome)}
-      </option>
-    `).join("")}
+    ${categorias
+      .map(
+        (categoria) => `
+          <option value="${escaparHTML(categoria.nome)}">
+            ${escaparHTML(categoria.nome)}
+          </option>
+        `
+      )
+      .join("")}
   `;
 
   elementos.filtro.value = categoriaAtiva;
 }
 
-/* =========================================
-   FILTRO E BUSCA
-========================================= */
+/* LISTAGEM DE PRODUTOS */
 
 function produtoCorrespondeBusca(produto) {
   const texto = [
     produto.nome,
     produto.categoria,
     produto.descricao
-  ].join(" ").toLocaleLowerCase("pt-BR");
+  ]
+    .join(" ")
+    .toLocaleLowerCase("pt-BR");
 
   return texto.includes(buscaAtual.toLocaleLowerCase("pt-BR"));
 }
@@ -452,116 +327,104 @@ function produtoCorrespondeFiltro(produto) {
   );
 }
 
-/* =========================================
-   RENDERIZAÇÃO DOS PRODUTOS
-========================================= */
-
 function renderizarProdutos() {
   if (!elementos.gradeProdutos) return;
 
   const lista = produtos.filter(produtoCorrespondeFiltro);
 
-  if (elementos.mensagemCatalogo) {
-    elementos.mensagemCatalogo.hidden = lista.length > 0;
-    elementos.mensagemCatalogo.textContent = lista.length
-      ? ""
-      : "Nenhum produto encontrado. Tente outra busca ou categoria.";
+  if (elementos.quantidadeProdutos) {
+    elementos.quantidadeProdutos.textContent =
+      `${lista.length} ${lista.length === 1 ? "produto" : "produtos"}`;
   }
 
-  if (!lista.length) {
+  if (elementos.estadoProdutos) {
+    elementos.estadoProdutos.textContent = "";
+    elementos.estadoProdutos.hidden = true;
+  }
+
+  if (lista.length === 0) {
     elementos.gradeProdutos.innerHTML = `
       <div class="estado-vazio">
         <strong>Nenhum produto encontrado</strong>
         <span>Tente outra busca ou escolha outra categoria.</span>
       </div>
     `;
-
     return;
   }
 
-  elementos.gradeProdutos.innerHTML = lista.map((produto) => {
-    const preco = obterPreco(produto);
+  elementos.gradeProdutos.innerHTML = lista
+    .map((produto) => {
+      const preco = obterPreco(produto);
 
-    const indisponivel =
-      !produto.disponivel &&
-      !configuracao.permitirProdutosIndisponiveisNoCarrinho;
+      const indisponivel =
+        !produto.disponivel &&
+        !configuracao.permitirProdutosIndisponiveisNoCarrinho;
 
-    const selo = !produto.disponivel
-      ? '<span class="etiqueta-indisponivel">Indisponível</span>'
-      : produto.destaque
-        ? '<span class="etiqueta-oferta">Destaque</span>'
-        : "";
+      const selo = !produto.disponivel
+        ? '<span class="etiqueta-indisponivel">Indisponível</span>'
+        : produto.destaque
+          ? '<span class="etiqueta-oferta">Destaque</span>'
+          : "";
 
-    const imagemSegura =
-      produto.imagem.startsWith("https://") ||
-      produto.imagem.startsWith("http://") ||
-      produto.imagem.startsWith("./") ||
-      produto.imagem.startsWith("assets/");
+      const imagem = produto.imagem
+        ? `
+          <img
+            src="${escaparHTML(produto.imagem)}"
+            alt="${escaparHTML(produto.nome)}"
+            loading="lazy"
+            onerror="this.hidden=true;this.nextElementSibling.hidden=false">
+          <span class="produto-placeholder" hidden>🍹</span>
+        `
+        : '<span class="produto-placeholder">🍹</span>';
 
-    const imagem = produto.imagem && imagemSegura
-      ? `
-        <img
-          src="${escaparHTML(produto.imagem)}"
-          alt="${escaparHTML(produto.nome)}"
-          loading="lazy"
-          onerror="this.hidden=true;this.nextElementSibling.hidden=false">
-        <span class="produto-placeholder" hidden>🍹</span>
-      `
-      : '<span class="produto-placeholder">🍹</span>';
-
-    return `
-      <article class="produto-card">
-        <div class="produto-imagem">
-          ${selo}
-          ${imagem}
-        </div>
-
-        <div class="produto-info">
-          <span class="produto-categoria">
-            ${escaparHTML(produto.categoria)}
-          </span>
-
-          <h3>${escaparHTML(produto.nome)}</h3>
-
-          <p class="produto-descricao">
-            ${escaparHTML(produto.descricao)}
-          </p>
-
-          <div class="produto-rodape">
-            <div class="produto-preco">
-              <small>
-                ${configuracao.modoEvento ? "Preço de evento" : "Preço"}
-              </small>
-
-              <strong>${formatarDinheiro(preco)}</strong>
-            </div>
-
-            <button
-              type="button"
-              class="botao-adicionar"
-              data-adicionar="${escaparHTML(produto.id)}"
-              aria-label="Adicionar ${escaparHTML(produto.nome)}"
-              ${indisponivel ? "disabled" : ""}>
-              +
-            </button>
+      return `
+        <article class="produto-card">
+          <div class="produto-imagem">
+            ${selo}
+            ${imagem}
           </div>
-        </div>
-      </article>
-    `;
-  }).join("");
+
+          <div class="produto-info">
+            <span class="produto-categoria">
+              ${escaparHTML(produto.categoria)}
+            </span>
+
+            <h3>${escaparHTML(produto.nome)}</h3>
+
+            <p class="produto-descricao">
+              ${escaparHTML(produto.descricao)}
+            </p>
+
+            <div class="produto-rodape">
+              <div class="produto-preco">
+                <small>
+                  ${configuracao.modoEvento ? "Preço de evento" : "Preço"}
+                </small>
+                <strong>${formatarDinheiro(preco)}</strong>
+              </div>
+
+              <button
+                type="button"
+                class="botao-adicionar"
+                data-adicionar="${escaparHTML(produto.id)}"
+                aria-label="Adicionar ${escaparHTML(produto.nome)}"
+                ${indisponivel ? "disabled" : ""}>
+                +
+              </button>
+            </div>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
 }
 
-/* =========================================
-   CARRINHO
-========================================= */
+/* CARRINHO */
 
 function adicionarProduto(id) {
   const produto = obterProduto(id);
 
-  if (!produto) {
-    notificar("Produto não encontrado.");
-    return;
-  }
+  if (!produto) return;
 
   if (
     !produto.disponivel &&
@@ -580,23 +443,6 @@ function adicionarProduto(id) {
 }
 
 function alterarQuantidade(id, delta) {
-  const produto = obterProduto(id);
-
-  if (!produto) {
-    carrinho.delete(id);
-    renderizarCarrinho();
-    return;
-  }
-
-  if (
-    delta > 0 &&
-    !produto.disponivel &&
-    !configuracao.permitirProdutosIndisponiveisNoCarrinho
-  ) {
-    notificar("Este produto está indisponível.");
-    return;
-  }
-
   const atual = carrinho.get(id) || 0;
   const nova = atual + delta;
 
@@ -623,13 +469,11 @@ function renderizarCarrinho() {
   if (!elementos.itensCarrinho) return;
 
   if (elementos.contadorCarrinho) {
-    elementos.contadorCarrinho.textContent =
-      obterQuantidadeCarrinho();
+    elementos.contadorCarrinho.textContent = obterQuantidadeCarrinho();
   }
 
   if (elementos.subtotalCarrinho) {
-    elementos.subtotalCarrinho.textContent =
-      formatarDinheiro(obterSubtotal());
+    elementos.subtotalCarrinho.textContent = formatarDinheiro(obterSubtotal());
   }
 
   if (elementos.finalizarPedido) {
@@ -641,10 +485,9 @@ function renderizarCarrinho() {
       <div class="carrinho-vazio">
         <span>🛒</span>
         <h3>Seu carrinho está vazio</h3>
-        <p>Adicione produtos para começar seu pedido.</p>
+        <p>Adicione algumas bebidas para começar.</p>
       </div>
     `;
-
     return;
   }
 
@@ -692,45 +535,34 @@ function renderizarCarrinho() {
     .join("");
 }
 
-/* =========================================
-   ABRIR E FECHAR CARRINHO
-========================================= */
+/* ABRIR E FECHAR O CARRINHO */
 
 function abrirCarrinho() {
-  if (!elementos.painelCarrinho) return;
-
-  elementos.painelCarrinho.classList.add("aberto");
-  elementos.painelCarrinho.setAttribute("aria-hidden", "false");
-  elementos.painelCarrinho.removeAttribute("inert");
+  elementos.painelCarrinho?.classList.add("aberto");
+  elementos.painelCarrinho?.setAttribute("aria-hidden", "false");
+  elementos.painelCarrinho?.removeAttribute("inert");
 
   if (elementos.fundoModal) {
     elementos.fundoModal.hidden = false;
   }
 
   document.body.classList.add("modal-aberto");
-
   elementos.fecharCarrinho?.focus();
 }
 
 function fecharCarrinho() {
-  if (!elementos.painelCarrinho) return;
-
-  elementos.painelCarrinho.classList.remove("aberto");
-  elementos.painelCarrinho.setAttribute("aria-hidden", "true");
-  elementos.painelCarrinho.setAttribute("inert", "");
+  elementos.painelCarrinho?.classList.remove("aberto");
+  elementos.painelCarrinho?.setAttribute("aria-hidden", "true");
+  elementos.painelCarrinho?.setAttribute("inert", "");
 
   if (elementos.fundoModal) {
     elementos.fundoModal.hidden = true;
   }
 
   document.body.classList.remove("modal-aberto");
-
-  elementos.abrirCarrinho?.focus();
 }
 
-/* =========================================
-   FINALIZAÇÃO PELO WHATSAPP
-========================================= */
+/* FINALIZAR PELO WHATSAPP */
 
 function finalizarPedido() {
   if (carrinho.size === 0) {
@@ -744,31 +576,25 @@ function finalizarPedido() {
   }
 
   const linhas = [
-    configuracao.mensagemWhatsApp,
+    `Olá! Quero fazer um pedido no ${configuracao.nomeDeposito}.`,
     "",
-    `*${configuracao.nomeDeposito.toUpperCase()}*`,
-    "",
-    "*MEU PEDIDO:*"
+    "MEU PEDIDO:"
   ];
 
   for (const [id, quantidade] of carrinho.entries()) {
     const produto = obterProduto(id);
 
-    if (!produto) {
-      notificar("Um produto não está mais disponível no catálogo.");
-      return;
-    }
+    if (!produto) continue;
 
     if (
       !produto.disponivel &&
       !configuracao.permitirProdutosIndisponiveisNoCarrinho
     ) {
-      notificar(`${produto.nome} está indisponível.`);
+      notificar(`Confira a disponibilidade de ${produto.nome}.`);
       return;
     }
 
-    const precoUnitario = obterPreco(produto);
-    const totalProduto = precoUnitario * quantidade;
+    const totalProduto = obterPreco(produto) * quantidade;
 
     linhas.push(
       `${quantidade}x ${produto.nome} — ${formatarDinheiro(totalProduto)}`
@@ -776,16 +602,10 @@ function finalizarPedido() {
   }
 
   linhas.push("");
-  linhas.push(`*Subtotal estimado: ${formatarDinheiro(obterSubtotal())}*`);
+  linhas.push(`Subtotal: ${formatarDinheiro(obterSubtotal())}`);
 
   if (configuracao.modoEvento) {
-    linhas.push("");
     linhas.push("Pedido durante período de evento.");
-  }
-
-  if (configuracao.endereco) {
-    linhas.push("");
-    linhas.push(`Endereço do depósito: ${configuracao.endereco}`);
   }
 
   linhas.push("");
@@ -798,29 +618,47 @@ function finalizarPedido() {
   window.open(url, "_blank", "noopener,noreferrer");
 }
 
-/* =========================================
-   ATUALIZAÇÃO DAS CONFIGURAÇÕES
-========================================= */
+/* ATUALIZAR CONFIGURAÇÃO E PRODUTOS */
 
 async function atualizarConfiguracao() {
   try {
-    const dados = await buscarJSON(ARQUIVOS.config);
-    const nova = validarConfiguracao(dados);
+    const nova = validarConfiguracao(
+      await buscarJSON(ARQUIVOS.config)
+    );
 
     const mudou =
       JSON.stringify(nova) !== JSON.stringify(configuracao);
 
     configuracao = nova;
 
-    atualizarInformacoesRodape();
-    atualizarAvisoEvento();
+    if (elementos.avisoEvento) {
+      elementos.avisoEvento.hidden = !configuracao.modoEvento;
+
+      const texto = $("#texto-aviso-evento");
+
+      if (texto && configuracao.modoEvento) {
+        texto.textContent = configuracao.mensagemEvento;
+      }
+    }
+
+    if (elementos.linkWhatsappRodape) {
+      if (configuracao.whatsapp) {
+        elementos.linkWhatsappRodape.href =
+          `https://wa.me/${configuracao.whatsapp}`;
+      } else {
+        elementos.linkWhatsappRodape.removeAttribute("href");
+      }
+    }
+
+    const endereco = $("#endereco-rodape");
+
+    if (endereco && configuracao.endereco) {
+      endereco.textContent = configuracao.endereco;
+    }
 
     if (mudou) {
       renderizarProdutos();
       renderizarCarrinho();
-
-      // Recalcula o intervalo caso ele tenha sido alterado no JSON.
-      iniciarAtualizacaoAutomatica();
     }
 
     return true;
@@ -830,32 +668,18 @@ async function atualizarConfiguracao() {
   }
 }
 
-/* =========================================
-   ATUALIZAÇÃO DO CATÁLOGO
-========================================= */
-
 async function atualizarProdutos() {
   try {
-    const dados = await buscarJSON(ARQUIVOS.produtos);
-    const novosProdutos = validarProdutos(dados);
+    const dados = validarProdutos(
+      await buscarJSON(ARQUIVOS.produtos)
+    );
 
-    produtos = novosProdutos;
+    produtos = dados;
 
-    // Remove do carrinho produtos excluídos do catálogo.
-    for (const id of [...carrinho.keys()]) {
+    // Remove do carrinho produtos que foram excluídos do catálogo.
+    for (const id of carrinho.keys()) {
       if (!obterProduto(id)) {
         carrinho.delete(id);
-      }
-    }
-
-    // Remove ou mantém produtos indisponíveis conforme a configuração.
-    if (!configuracao.permitirProdutosIndisponiveisNoCarrinho) {
-      for (const id of [...carrinho.keys()]) {
-        const produto = obterProduto(id);
-
-        if (produto && !produto.disponivel) {
-          carrinho.delete(id);
-        }
       }
     }
 
@@ -863,51 +687,34 @@ async function atualizarProdutos() {
     renderizarProdutos();
     renderizarCarrinho();
 
-    if (elementos.mensagemCatalogo) {
-      elementos.mensagemCatalogo.hidden = produtos.length > 0;
+    if (elementos.estadoProdutos) {
+      elementos.estadoProdutos.hidden = true;
     }
 
     return true;
   } catch (erro) {
     console.error("Erro ao carregar produtos:", erro);
 
-    if (elementos.gradeProdutos) {
-      elementos.gradeProdutos.innerHTML = `
-        <div class="estado-vazio">
-          <strong>Não foi possível carregar os produtos</strong>
-          <span>Confira os arquivos produtos.json e config.json e tente novamente.</span>
-        </div>
-      `;
+    if (elementos.estadoProdutos) {
+      elementos.estadoProdutos.hidden = false;
+      elementos.estadoProdutos.textContent =
+        "Não foi possível carregar os produtos. Tente recarregar a página.";
     }
 
     return false;
   }
 }
 
-/* =========================================
-   ATUALIZAÇÃO AUTOMÁTICA
-========================================= */
-
 function iniciarAtualizacaoAutomatica() {
-  clearInterval(timerAtualizacao);
+  clearInterval(timerConfiguracao);
 
-  timerAtualizacao = setInterval(async () => {
-    if (carregando) return;
-
-    carregando = true;
-
-    try {
-      await atualizarConfiguracao();
-      await atualizarProdutos();
-    } finally {
-      carregando = false;
-    }
+  timerConfiguracao = setInterval(async () => {
+    await atualizarConfiguracao();
+    await atualizarProdutos();
   }, configuracao.atualizacaoSegundos * 1000);
 }
 
-/* =========================================
-   EVENTOS DA INTERFACE
-========================================= */
+/* EVENTOS DA PÁGINA */
 
 function configurarEventos() {
   elementos.buscar?.addEventListener("input", (evento) => {
@@ -916,7 +723,7 @@ function configurarEventos() {
   });
 
   elementos.filtro?.addEventListener("change", (evento) => {
-    categoriaAtiva = evento.target.value || "todas";
+    categoriaAtiva = evento.target.value;
     renderizarCategorias();
     renderizarProdutos();
   });
@@ -926,10 +733,15 @@ function configurarEventos() {
 
     if (!botao) return;
 
-    categoriaAtiva = botao.dataset.categoria || "todas";
+    categoriaAtiva = botao.dataset.categoria;
 
     renderizarCategorias();
     renderizarProdutos();
+
+    $("#produtos")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
   });
 
   elementos.gradeProdutos?.addEventListener("click", (evento) => {
@@ -955,56 +767,29 @@ function configurarEventos() {
   });
 
   elementos.abrirCarrinho?.addEventListener("click", abrirCarrinho);
+  elementos.fecharCarrinho?.addEventListener("click", fecharCarrinho);
+  elementos.fundoModal?.addEventListener("click", fecharCarrinho);
+  elementos.finalizarPedido?.addEventListener("click", finalizarPedido);
 
-  elementos.abrirCarrinhoContato?.addEventListener(
-    "click",
-    abrirCarrinho
-  );
-
-  elementos.fecharCarrinho?.addEventListener(
-    "click",
-    fecharCarrinho
-  );
-
-  elementos.fundoModal?.addEventListener(
-    "click",
-    fecharCarrinho
-  );
-
-  elementos.finalizarPedido?.addEventListener(
-    "click",
-    finalizarPedido
-  );
+  $("#abrir-carrinho-contato")?.addEventListener("click", abrirCarrinho);
 
   document.addEventListener("keydown", (evento) => {
-    if (
-      evento.key === "Escape" &&
-      elementos.painelCarrinho?.classList.contains("aberto")
-    ) {
+    if (evento.key === "Escape") {
       fecharCarrinho();
     }
   });
+
+  if (elementos.anoAtual) {
+    elementos.anoAtual.textContent = new Date().getFullYear();
+  }
 }
 
-/* =========================================
-   INICIALIZAÇÃO
-========================================= */
+/* INICIALIZAÇÃO */
 
 async function iniciarSite() {
   configurarEventos();
 
-  atualizarInformacoesRodape();
-
-  if (elementos.painelCarrinho) {
-    elementos.painelCarrinho.setAttribute("inert", "");
-  }
-
-  const configuracaoCarregada = await atualizarConfiguracao();
-
-  if (!configuracaoCarregada) {
-    notificar("Não foi possível carregar as configurações.");
-  }
-
+  await atualizarConfiguracao();
   await atualizarProdutos();
 
   renderizarCategorias();
@@ -1015,4 +800,3 @@ async function iniciarSite() {
 }
 
 iniciarSite();
-```
