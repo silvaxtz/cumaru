@@ -1920,3 +1920,22 @@ body.modal-aberto {
   }
 }
 
+/* Evita zoom acidental ao tocar nos controles de quantidade */
+.botao-quantidade,
+.controle-quantidade,
+.quantidade-controle,
+button,
+input[type="button"] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Evita seleção de texto durante cliques rápidos */
+.botao-quantidade,
+.controle-quantidade,
+.quantidade-controle {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+
