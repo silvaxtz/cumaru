@@ -22,6 +22,7 @@ const CONFIG_PADRAO = {
 const ICONES = {
   todas: '<path d="M3 7h18M5 7l1 13h12l1-13M9 7V5a3 3 0 0 1 6 0v2"/>',
   cerveja: '<path d="M7 3h8l1 4-1 14H6L5 7zM16 8h3l1 2v5l-2 2h-3M8 10h5"/>',
+  aguas_sucos: '<path d="M12 2S5 10 5 15a7 7 0 0 0 14 0c0-5-7-13-7-13zM9 16a3 3 0 0 0 3 3"/>',
   refrigerante: '<path d="M9 3h6v3l2 3-1 12H8L7 9l2-3zM9 6h6M8 10h8M10 14h4"/>',
   energetico: '<path d="m13 2-8 12h6l-1 8 9-13h-6z"/>',
   vinho: '<path d="M8 3h8l-1 7a3 3 0 0 1-6 0L8 3zM12 13v7M8 21h8M9 7h6"/>',
@@ -37,7 +38,7 @@ const CATEGORIAS_PADRAO = [
   { nome: "Energéticos", icone: "energetico" },
   { nome: "Vinhos", icone: "vinho" },
   { nome: "Destilados", icone: "destilado" },
-  { nome: "Águas", icone: "agua" },
+  { nome: "Águas e Sucos", icone: "aguas_sucos" },
   { nome: "Gelo", icone: "gelo" },
   { nome: "Outros", icone: "outros" }
 ];
