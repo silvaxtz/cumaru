@@ -130,7 +130,6 @@
       "preco": 45.00,
       "embalagens": [
         {"id": "garrafa", "nome": "Garrafa", "quantidade": 1, "preco": 45.00},
-        {"id": "caixa-6", "nome": "Caixa com 6", "quantidade": 6, "preco": 250.00}
       ],
       "imagem": "",
       "disponivel": true,
