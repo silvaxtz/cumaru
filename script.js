@@ -1,10 +1,10 @@
-
+```javascript
 "use strict";
 
-/* ==========================================
+/* =========================================
    DEPÓSITO CUMARU
    Catálogo, preços, carrinho e WhatsApp
-========================================== */
+========================================= */
 
 const ARQUIVOS = {
   produtos: "./produtos.json",
@@ -40,33 +40,46 @@ let configuracao = { ...CONFIG_PADRAO };
 let carrinho = new Map();
 let categoriaAtiva = "todas";
 let buscaAtual = "";
-let timerConfiguracao = null;
+
+let timerAtualizacao = null;
 let timerNotificacao = null;
-let versaoConfiguracao = 0;
-let versaoProdutos = 0;
+let carregando = false;
 
 const $ = (seletor) => document.querySelector(seletor);
 
 const elementos = {
   avisoEvento: $("#aviso-evento"),
+  textoAvisoEvento: $("#texto-aviso-evento"),
+
   listaCategorias: $("#lista-categorias"),
   gradeProdutos: $("#grade-produtos"),
-  estadoProdutos: $("#estado-produtos"),
-  quantidadeProdutos: $("#quantidade-produtos"),
+  mensagemCatalogo: $("#mensagem-catalogo"),
+
   buscar: $("#buscar-produto"),
   filtro: $("#filtro-categoria"),
+
   abrirCarrinho: $("#abrir-carrinho"),
+  abrirCarrinhoContato: $("#abrir-carrinho-contato"),
   fecharCarrinho: $("#fechar-carrinho"),
+
   painelCarrinho: $("#painel-carrinho"),
   fundoModal: $("#fundo-modal"),
+
   itensCarrinho: $("#itens-carrinho"),
   contadorCarrinho: $("#contador-carrinho"),
   subtotalCarrinho: $("#subtotal-carrinho"),
   finalizarPedido: $("#finalizar-pedido"),
+
   notificacao: $("#notificacao"),
+
   linkWhatsappRodape: $("#link-whatsapp-rodape"),
+  enderecoRodape: $("#endereco-rodape"),
   anoAtual: $("#ano-atual")
 };
+
+/* =========================================
+   FUNÇÕES AUXILIARES
+========================================= */
 
 function escaparHTML(valor) {
   return String(valor ?? "").replace(/[&<>"']/g, (caractere) => ({
@@ -81,21 +94,27 @@ function escaparHTML(valor) {
 function formatarDinheiro(valor) {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
-    currency: configuracao.moeda || "BRL"
+    currency: configuracao.moeda
   }).format(valor);
+}
+
+function arredondarDinheiro(valor) {
+  return Math.round((valor + Number.EPSILON) * 100) / 100;
 }
 
 function notificar(mensagem) {
   if (!elementos.notificacao) return;
 
   elementos.notificacao.textContent = mensagem;
+  elementos.notificacao.hidden = false;
   elementos.notificacao.classList.add("visivel");
 
   clearTimeout(timerNotificacao);
 
   timerNotificacao = setTimeout(() => {
     elementos.notificacao.classList.remove("visivel");
-  }, 2800);
+    elementos.notificacao.hidden = true;
+  }, 3000);
 }
 
 async function buscarJSON(caminho) {
@@ -107,84 +126,181 @@ async function buscarJSON(caminho) {
   });
 
   if (!resposta.ok) {
-    throw new Error(`Não foi possível carregar ${caminho}`);
+    throw new Error(
+      `Não foi possível carregar ${caminho}. HTTP ${resposta.status}`
+    );
   }
 
   return resposta.json();
 }
 
+/* =========================================
+   CONFIGURAÇÕES
+========================================= */
+
 function validarConfiguracao(dados) {
   if (!dados || typeof dados !== "object" || Array.isArray(dados)) {
-    throw new Error("Configuração inválida.");
+    throw new Error("O arquivo config.json é inválido.");
   }
 
   const percentual = Number(dados.aumentoGeralPercentual);
   const intervalo = Number(dados.atualizacaoSegundos);
 
+  const moedaInformada = String(dados.moeda || "BRL").toUpperCase();
+
+  let moedaValida = "BRL";
+
+  try {
+    new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: moedaInformada
+    });
+
+    moedaValida = moedaInformada;
+  } catch {
+    console.warn("Moeda inválida. Usando BRL.");
+  }
+
   return {
     ...CONFIG_PADRAO,
     ...dados,
+
+    nomeDeposito: String(
+      dados.nomeDeposito || CONFIG_PADRAO.nomeDeposito
+    ),
+
+    whatsapp: String(dados.whatsapp || "").replace(/\D/g, ""),
+
     modoEvento: dados.modoEvento === true,
-    aumentoGeralPercentual:
-      Number.isFinite(percentual)
-        ? Math.max(0, Math.min(500, percentual))
-        : CONFIG_PADRAO.aumentoGeralPercentual,
-    atualizacaoSegundos:
-      Number.isFinite(intervalo)
-        ? Math.max(10, Math.min(3600, intervalo))
-        : CONFIG_PADRAO.atualizacaoSegundos,
-    whatsapp: String(dados.whatsapp || "").replace(/\D/g, "")
+
+    aumentoGeralPercentual: Number.isFinite(percentual)
+      ? Math.max(0, Math.min(500, percentual))
+      : CONFIG_PADRAO.aumentoGeralPercentual,
+
+    atualizacaoSegundos: Number.isFinite(intervalo)
+      ? Math.max(10, Math.min(3600, intervalo))
+      : CONFIG_PADRAO.atualizacaoSegundos,
+
+    moeda: moedaValida,
+
+    mensagemEvento: String(
+      dados.mensagemEvento || CONFIG_PADRAO.mensagemEvento
+    ),
+
+    mensagemWhatsApp: String(
+      dados.mensagemWhatsApp || CONFIG_PADRAO.mensagemWhatsApp
+    ),
+
+    endereco: String(dados.endereco || ""),
+
+    permitirProdutosIndisponiveisNoCarrinho:
+      dados.permitirProdutosIndisponiveisNoCarrinho === true
   };
 }
 
+function atualizarInformacoesRodape() {
+  if (elementos.anoAtual) {
+    elementos.anoAtual.textContent = new Date().getFullYear();
+  }
+
+  if (elementos.enderecoRodape) {
+    elementos.enderecoRodape.textContent = configuracao.endereco;
+    elementos.enderecoRodape.hidden = !configuracao.endereco;
+  }
+
+  if (elementos.linkWhatsappRodape) {
+    if (configuracao.whatsapp) {
+      elementos.linkWhatsappRodape.href =
+        `https://wa.me/${configuracao.whatsapp}`;
+
+      elementos.linkWhatsappRodape.hidden = false;
+    } else {
+      elementos.linkWhatsappRodape.removeAttribute("href");
+    }
+  }
+}
+
+function atualizarAvisoEvento() {
+  if (!elementos.avisoEvento) return;
+
+  elementos.avisoEvento.hidden = !configuracao.modoEvento;
+
+  if (elementos.textoAvisoEvento) {
+    elementos.textoAvisoEvento.textContent =
+      configuracao.modoEvento
+        ? configuracao.mensagemEvento
+        : "";
+  }
+}
+
+/* =========================================
+   VALIDAÇÃO DOS PRODUTOS
+========================================= */
+
 function validarProdutos(dados) {
   if (!dados || !Array.isArray(dados.produtos)) {
-    throw new Error("O arquivo produtos.json precisa conter uma lista produtos.");
+    throw new Error(
+      "O produtos.json precisa conter uma lista chamada produtos."
+    );
   }
 
   const ids = new Set();
 
-  return dados.produtos.filter((produto) => {
-    if (!produto || typeof produto !== "object") return false;
+  return dados.produtos
+    .filter((produto) => {
+      if (!produto || typeof produto !== "object") return false;
 
-    const id = String(produto.id || "").trim();
-    const nome = String(produto.nome || "").trim();
-    const preco = Number(produto.preco);
+      const id = String(produto.id || "").trim();
+      const nome = String(produto.nome || "").trim();
+      const preco = Number(produto.preco);
 
-    if (
-      !id ||
-      !nome ||
-      !Number.isFinite(preco) ||
-      preco < 0 ||
-      ids.has(id)
-    ) {
-      console.warn("Produto ignorado por dados inválidos:", produto);
-      return false;
-    }
+      if (
+        !id ||
+        !nome ||
+        !Number.isFinite(preco) ||
+        preco < 0 ||
+        ids.has(id)
+      ) {
+        console.warn("Produto ignorado por dados inválidos:", produto);
+        return false;
+      }
 
-    ids.add(id);
+      ids.add(id);
+      return true;
+    })
+    .map((produto) => {
+      let aumentoEvento = null;
 
-    return true;
-  }).map((produto) => ({
-    ...produto,
-    id: String(produto.id),
-    nome: String(produto.nome),
-    categoria: String(produto.categoria || "Outros"),
-    descricao: String(produto.descricao || ""),
-    preco: Number(produto.preco),
-    imagem: String(produto.imagem || ""),
-    disponivel: produto.disponivel !== false,
-    destaque: produto.destaque === true,
-    aumentoEvento:
-      produto.aumentoEvento === null ||
-      produto.aumentoEvento === undefined ||
-      produto.aumentoEvento === ""
-        ? null
-        : Number(produto.aumentoEvento)
-  }));
+      if (
+        produto.aumentoEvento !== null &&
+        produto.aumentoEvento !== undefined &&
+        produto.aumentoEvento !== ""
+      ) {
+        const valor = Number(produto.aumentoEvento);
+
+        aumentoEvento = Number.isFinite(valor)
+          ? Math.max(0, Math.min(500, valor))
+          : null;
+      }
+
+      return {
+        ...produto,
+        id: String(produto.id),
+        nome: String(produto.nome),
+        categoria: String(produto.categoria || "Outros"),
+        descricao: String(produto.descricao || ""),
+        preco: Number(produto.preco),
+        imagem: String(produto.imagem || ""),
+        disponivel: produto.disponivel !== false,
+        destaque: produto.destaque === true,
+        aumentoEvento
+      };
+    });
 }
 
-/* PREÇOS */
+/* =========================================
+   PREÇOS
+========================================= */
 
 function obterPreco(produto) {
   const precoOriginal = Number(produto.preco);
@@ -195,15 +311,19 @@ function obterPreco(produto) {
 
   let percentual = configuracao.aumentoGeralPercentual;
 
+  /*
+    null = usa o aumento geral.
+    0 = não aumenta o preço deste produto.
+    Outro número = usa o percentual individual.
+  */
+
   if (produto.aumentoEvento !== null) {
-    percentual = Number.isFinite(produto.aumentoEvento)
-      ? Math.max(0, Math.min(500, produto.aumentoEvento))
-      : percentual;
+    percentual = produto.aumentoEvento;
   }
 
-  return Math.round(
-    (precoOriginal * (1 + percentual / 100) + Number.EPSILON) * 100
-  ) / 100;
+  return arredondarDinheiro(
+    precoOriginal * (1 + percentual / 100)
+  );
 }
 
 function obterProduto(id) {
@@ -231,23 +351,33 @@ function obterSubtotal() {
     }
   }
 
-  return Math.round((total + Number.EPSILON) * 100) / 100;
+  return arredondarDinheiro(total);
 }
 
-/* CATEGORIAS */
+/* =========================================
+   CATEGORIAS
+========================================= */
 
 function obterCategorias() {
-  const existentes = [...new Set(
-    produtos.map((produto) => produto.categoria)
-  )];
+  const existentes = [
+    ...new Set(produtos.map((produto) => produto.categoria))
+  ];
 
   const conhecidas = CATEGORIAS_PADRAO.filter((categoria) =>
     existentes.includes(categoria.nome)
   );
 
   const adicionais = existentes
-    .filter((nome) => !CATEGORIAS_PADRAO.some((item) => item.nome === nome))
-    .map((nome) => ({ nome, icone: "🍹" }));
+    .filter(
+      (nome) =>
+        !CATEGORIAS_PADRAO.some(
+          (categoria) => categoria.nome === nome
+        )
+    )
+    .map((nome) => ({
+      nome,
+      icone: "🍹"
+    }));
 
   return [...conhecidas, ...adicionais];
 }
@@ -257,21 +387,31 @@ function renderizarCategorias() {
 
   const categorias = obterCategorias();
 
+  if (
+    categoriaAtiva !== "todas" &&
+    !categorias.some((categoria) => categoria.nome === categoriaAtiva)
+  ) {
+    categoriaAtiva = "todas";
+  }
+
   elementos.listaCategorias.innerHTML = [
     `
       <button
         class="categoria-card ${categoriaAtiva === "todas" ? "ativa" : ""}"
         type="button"
-        data-categoria="todas">
+        data-categoria="todas"
+        aria-pressed="${categoriaAtiva === "todas"}">
         <span class="categoria-icone">🛍️</span>
         <strong>Todas as bebidas</strong>
       </button>
     `,
+
     ...categorias.map((categoria) => `
       <button
         class="categoria-card ${categoriaAtiva === categoria.nome ? "ativa" : ""}"
         type="button"
-        data-categoria="${escaparHTML(categoria.nome)}">
+        data-categoria="${escaparHTML(categoria.nome)}"
+        aria-pressed="${categoriaAtiva === categoria.nome}">
         <span class="categoria-icone">${escaparHTML(categoria.icone)}</span>
         <strong>${escaparHTML(categoria.nome)}</strong>
       </button>
@@ -290,7 +430,9 @@ function renderizarCategorias() {
   elementos.filtro.value = categoriaAtiva;
 }
 
-/* PRODUTOS */
+/* =========================================
+   FILTRO E BUSCA
+========================================= */
 
 function produtoCorrespondeBusca(produto) {
   const texto = [
@@ -310,36 +452,38 @@ function produtoCorrespondeFiltro(produto) {
   );
 }
 
+/* =========================================
+   RENDERIZAÇÃO DOS PRODUTOS
+========================================= */
+
 function renderizarProdutos() {
   if (!elementos.gradeProdutos) return;
 
   const lista = produtos.filter(produtoCorrespondeFiltro);
 
-  if (elementos.quantidadeProdutos) {
-    elementos.quantidadeProdutos.textContent =
-      `${lista.length} ${lista.length === 1 ? "produto" : "produtos"}`;
-  }
-
-  if (elementos.estadoProdutos) {
-    elementos.estadoProdutos.textContent = "";
-    elementos.estadoProdutos.hidden = true;
+  if (elementos.mensagemCatalogo) {
+    elementos.mensagemCatalogo.hidden = lista.length > 0;
+    elementos.mensagemCatalogo.textContent = lista.length
+      ? ""
+      : "Nenhum produto encontrado. Tente outra busca ou categoria.";
   }
 
   if (!lista.length) {
     elementos.gradeProdutos.innerHTML = `
       <div class="estado-vazio">
         <strong>Nenhum produto encontrado</strong>
-        <span>Tente outra busca ou escolha uma categoria diferente.</span>
+        <span>Tente outra busca ou escolha outra categoria.</span>
       </div>
     `;
+
     return;
   }
 
   elementos.gradeProdutos.innerHTML = lista.map((produto) => {
     const preco = obterPreco(produto);
-    const quantidade = carrinho.get(produto.id) || 0;
 
-    const indisponivel = !produto.disponivel &&
+    const indisponivel =
+      !produto.disponivel &&
       !configuracao.permitirProdutosIndisponiveisNoCarrinho;
 
     const selo = !produto.disponivel
@@ -348,7 +492,13 @@ function renderizarProdutos() {
         ? '<span class="etiqueta-oferta">Destaque</span>'
         : "";
 
-    const imagem = produto.imagem
+    const imagemSegura =
+      produto.imagem.startsWith("https://") ||
+      produto.imagem.startsWith("http://") ||
+      produto.imagem.startsWith("./") ||
+      produto.imagem.startsWith("assets/");
+
+    const imagem = produto.imagem && imagemSegura
       ? `
         <img
           src="${escaparHTML(produto.imagem)}"
@@ -379,7 +529,10 @@ function renderizarProdutos() {
 
           <div class="produto-rodape">
             <div class="produto-preco">
-              <small>${configuracao.modoEvento ? "Preço de evento" : "Preço"}</small>
+              <small>
+                ${configuracao.modoEvento ? "Preço de evento" : "Preço"}
+              </small>
+
               <strong>${formatarDinheiro(preco)}</strong>
             </div>
 
@@ -389,7 +542,7 @@ function renderizarProdutos() {
               data-adicionar="${escaparHTML(produto.id)}"
               aria-label="Adicionar ${escaparHTML(produto.nome)}"
               ${indisponivel ? "disabled" : ""}>
-              ${quantidade > 0 ? "+" : "+"}
+              +
             </button>
           </div>
         </div>
@@ -398,12 +551,17 @@ function renderizarProdutos() {
   }).join("");
 }
 
-/* CARRINHO */
+/* =========================================
+   CARRINHO
+========================================= */
 
 function adicionarProduto(id) {
   const produto = obterProduto(id);
 
-  if (!produto) return;
+  if (!produto) {
+    notificar("Produto não encontrado.");
+    return;
+  }
 
   if (
     !produto.disponivel &&
@@ -422,6 +580,23 @@ function adicionarProduto(id) {
 }
 
 function alterarQuantidade(id, delta) {
+  const produto = obterProduto(id);
+
+  if (!produto) {
+    carrinho.delete(id);
+    renderizarCarrinho();
+    return;
+  }
+
+  if (
+    delta > 0 &&
+    !produto.disponivel &&
+    !configuracao.permitirProdutosIndisponiveisNoCarrinho
+  ) {
+    notificar("Este produto está indisponível.");
+    return;
+  }
+
   const atual = carrinho.get(id) || 0;
   const nova = atual + delta;
 
@@ -448,11 +623,13 @@ function renderizarCarrinho() {
   if (!elementos.itensCarrinho) return;
 
   if (elementos.contadorCarrinho) {
-    elementos.contadorCarrinho.textContent = obterQuantidadeCarrinho();
+    elementos.contadorCarrinho.textContent =
+      obterQuantidadeCarrinho();
   }
 
   if (elementos.subtotalCarrinho) {
-    elementos.subtotalCarrinho.textContent = formatarDinheiro(obterSubtotal());
+    elementos.subtotalCarrinho.textContent =
+      formatarDinheiro(obterSubtotal());
   }
 
   if (elementos.finalizarPedido) {
@@ -464,9 +641,10 @@ function renderizarCarrinho() {
       <div class="carrinho-vazio">
         <span>🛒</span>
         <h3>Seu carrinho está vazio</h3>
-        <p>Adicione algumas bebidas para começar.</p>
+        <p>Adicione produtos para começar seu pedido.</p>
       </div>
     `;
+
     return;
   }
 
@@ -480,6 +658,7 @@ function renderizarCarrinho() {
         <article class="item-carrinho">
           <div>
             <h3>${escaparHTML(produto.nome)}</h3>
+
             <div class="item-carrinho-preco">
               ${formatarDinheiro(obterPreco(produto) * quantidade)}
             </div>
@@ -509,38 +688,49 @@ function renderizarCarrinho() {
           </button>
         </article>
       `;
-    }).join("");
+    })
+    .join("");
 }
 
-/* ABRIR E FECHAR CARRINHO */
+/* =========================================
+   ABRIR E FECHAR CARRINHO
+========================================= */
 
 function abrirCarrinho() {
-  elementos.painelCarrinho?.classList.add("aberto");
-  elementos.painelCarrinho?.setAttribute("aria-hidden", "false");
-  elementos.painelCarrinho?.removeAttribute("inert");
+  if (!elementos.painelCarrinho) return;
+
+  elementos.painelCarrinho.classList.add("aberto");
+  elementos.painelCarrinho.setAttribute("aria-hidden", "false");
+  elementos.painelCarrinho.removeAttribute("inert");
 
   if (elementos.fundoModal) {
     elementos.fundoModal.hidden = false;
   }
 
   document.body.classList.add("modal-aberto");
+
   elementos.fecharCarrinho?.focus();
 }
 
 function fecharCarrinho() {
-  elementos.painelCarrinho?.classList.remove("aberto");
-  elementos.painelCarrinho?.setAttribute("aria-hidden", "true");
-  elementos.painelCarrinho?.setAttribute("inert", "");
+  if (!elementos.painelCarrinho) return;
+
+  elementos.painelCarrinho.classList.remove("aberto");
+  elementos.painelCarrinho.setAttribute("aria-hidden", "true");
+  elementos.painelCarrinho.setAttribute("inert", "");
 
   if (elementos.fundoModal) {
     elementos.fundoModal.hidden = true;
   }
 
   document.body.classList.remove("modal-aberto");
+
   elementos.abrirCarrinho?.focus();
 }
 
-/* WHATSAPP */
+/* =========================================
+   FINALIZAÇÃO PELO WHATSAPP
+========================================= */
 
 function finalizarPedido() {
   if (carrinho.size === 0) {
@@ -554,18 +744,26 @@ function finalizarPedido() {
   }
 
   const linhas = [
-    `Olá! Quero fazer um pedido no ${configuracao.nomeDeposito}.`,
+    configuracao.mensagemWhatsApp,
     "",
-    "MEU PEDIDO:"
+    `*${configuracao.nomeDeposito.toUpperCase()}*`,
+    "",
+    "*MEU PEDIDO:*"
   ];
 
   for (const [id, quantidade] of carrinho.entries()) {
     const produto = obterProduto(id);
 
-    if (!produto) continue;
+    if (!produto) {
+      notificar("Um produto não está mais disponível no catálogo.");
+      return;
+    }
 
-    if (!produto.disponivel) {
-      notificar(`Confira a disponibilidade de ${produto.nome}.`);
+    if (
+      !produto.disponivel &&
+      !configuracao.permitirProdutosIndisponiveisNoCarrinho
+    ) {
+      notificar(`${produto.nome} está indisponível.`);
       return;
     }
 
@@ -578,10 +776,16 @@ function finalizarPedido() {
   }
 
   linhas.push("");
-  linhas.push(`Subtotal: ${formatarDinheiro(obterSubtotal())}`);
+  linhas.push(`*Subtotal estimado: ${formatarDinheiro(obterSubtotal())}*`);
 
   if (configuracao.modoEvento) {
+    linhas.push("");
     linhas.push("Pedido durante período de evento.");
+  }
+
+  if (configuracao.endereco) {
+    linhas.push("");
+    linhas.push(`Endereço do depósito: ${configuracao.endereco}`);
   }
 
   linhas.push("");
@@ -594,39 +798,29 @@ function finalizarPedido() {
   window.open(url, "_blank", "noopener,noreferrer");
 }
 
-/* CONFIGURAÇÕES E ATUALIZAÇÃO */
+/* =========================================
+   ATUALIZAÇÃO DAS CONFIGURAÇÕES
+========================================= */
 
 async function atualizarConfiguracao() {
   try {
-    const nova = validarConfiguracao(
-      await buscarJSON(ARQUIVOS.config)
-    );
+    const dados = await buscarJSON(ARQUIVOS.config);
+    const nova = validarConfiguracao(dados);
 
     const mudou =
       JSON.stringify(nova) !== JSON.stringify(configuracao);
 
     configuracao = nova;
 
+    atualizarInformacoesRodape();
+    atualizarAvisoEvento();
+
     if (mudou) {
-      versaoConfiguracao++;
-
-      if (elementos.avisoEvento) {
-        elementos.avisoEvento.hidden = !configuracao.modoEvento;
-
-        const texto = elementos.avisoEvento.querySelector("span:last-child");
-
-        if (texto && configuracao.modoEvento) {
-          texto.textContent = configuracao.mensagemEvento;
-        }
-      }
-
-      if (elementos.linkWhatsappRodape && configuracao.whatsapp) {
-        elementos.linkWhatsappRodape.href =
-          `https://wa.me/${configuracao.whatsapp}`;
-      }
-
       renderizarProdutos();
       renderizarCarrinho();
+
+      // Recalcula o intervalo caso ele tenha sido alterado no JSON.
+      iniciarAtualizacaoAutomatica();
     }
 
     return true;
@@ -636,19 +830,32 @@ async function atualizarConfiguracao() {
   }
 }
 
+/* =========================================
+   ATUALIZAÇÃO DO CATÁLOGO
+========================================= */
+
 async function atualizarProdutos() {
   try {
-    const dados = validarProdutos(
-      await buscarJSON(ARQUIVOS.produtos)
-    );
+    const dados = await buscarJSON(ARQUIVOS.produtos);
+    const novosProdutos = validarProdutos(dados);
 
-    produtos = dados;
-    versaoProdutos++;
+    produtos = novosProdutos;
 
-    // Retira do carrinho itens que deixaram de existir.
-    for (const id of carrinho.keys()) {
+    // Remove do carrinho produtos excluídos do catálogo.
+    for (const id of [...carrinho.keys()]) {
       if (!obterProduto(id)) {
         carrinho.delete(id);
+      }
+    }
+
+    // Remove ou mantém produtos indisponíveis conforme a configuração.
+    if (!configuracao.permitirProdutosIndisponiveisNoCarrinho) {
+      for (const id of [...carrinho.keys()]) {
+        const produto = obterProduto(id);
+
+        if (produto && !produto.disponivel) {
+          carrinho.delete(id);
+        }
       }
     }
 
@@ -656,34 +863,51 @@ async function atualizarProdutos() {
     renderizarProdutos();
     renderizarCarrinho();
 
-    if (elementos.estadoProdutos) {
-      elementos.estadoProdutos.hidden = true;
+    if (elementos.mensagemCatalogo) {
+      elementos.mensagemCatalogo.hidden = produtos.length > 0;
     }
 
     return true;
   } catch (erro) {
     console.error("Erro ao carregar produtos:", erro);
 
-    if (elementos.estadoProdutos) {
-      elementos.estadoProdutos.hidden = false;
-      elementos.estadoProdutos.textContent =
-        "Não foi possível carregar os produtos. Tente recarregar a página.";
+    if (elementos.gradeProdutos) {
+      elementos.gradeProdutos.innerHTML = `
+        <div class="estado-vazio">
+          <strong>Não foi possível carregar os produtos</strong>
+          <span>Confira os arquivos produtos.json e config.json e tente novamente.</span>
+        </div>
+      `;
     }
 
     return false;
   }
 }
 
-function iniciarAtualizacaoAutomatica() {
-  clearInterval(timerConfiguracao);
+/* =========================================
+   ATUALIZAÇÃO AUTOMÁTICA
+========================================= */
 
-  timerConfiguracao = setInterval(async () => {
-    await atualizarConfiguracao();
-    await atualizarProdutos();
+function iniciarAtualizacaoAutomatica() {
+  clearInterval(timerAtualizacao);
+
+  timerAtualizacao = setInterval(async () => {
+    if (carregando) return;
+
+    carregando = true;
+
+    try {
+      await atualizarConfiguracao();
+      await atualizarProdutos();
+    } finally {
+      carregando = false;
+    }
   }, configuracao.atualizacaoSegundos * 1000);
 }
 
-/* EVENTOS DA INTERFACE */
+/* =========================================
+   EVENTOS DA INTERFACE
+========================================= */
 
 function configurarEventos() {
   elementos.buscar?.addEventListener("input", (evento) => {
@@ -692,7 +916,7 @@ function configurarEventos() {
   });
 
   elementos.filtro?.addEventListener("change", (evento) => {
-    categoriaAtiva = evento.target.value;
+    categoriaAtiva = evento.target.value || "todas";
     renderizarCategorias();
     renderizarProdutos();
   });
@@ -702,15 +926,10 @@ function configurarEventos() {
 
     if (!botao) return;
 
-    categoriaAtiva = botao.dataset.categoria;
+    categoriaAtiva = botao.dataset.categoria || "todas";
 
     renderizarCategorias();
     renderizarProdutos();
-
-    $("#produtos")?.scrollIntoView({
-      behavior: "smooth",
-      block: "start"
-    });
   });
 
   elementos.gradeProdutos?.addEventListener("click", (evento) => {
@@ -736,25 +955,56 @@ function configurarEventos() {
   });
 
   elementos.abrirCarrinho?.addEventListener("click", abrirCarrinho);
-  elementos.fecharCarrinho?.addEventListener("click", fecharCarrinho);
-  elementos.fundoModal?.addEventListener("click", fecharCarrinho);
-  elementos.finalizarPedido?.addEventListener("click", finalizarPedido);
+
+  elementos.abrirCarrinhoContato?.addEventListener(
+    "click",
+    abrirCarrinho
+  );
+
+  elementos.fecharCarrinho?.addEventListener(
+    "click",
+    fecharCarrinho
+  );
+
+  elementos.fundoModal?.addEventListener(
+    "click",
+    fecharCarrinho
+  );
+
+  elementos.finalizarPedido?.addEventListener(
+    "click",
+    finalizarPedido
+  );
 
   document.addEventListener("keydown", (evento) => {
-    if (evento.key === "Escape") {
+    if (
+      evento.key === "Escape" &&
+      elementos.painelCarrinho?.classList.contains("aberto")
+    ) {
       fecharCarrinho();
     }
   });
-
-  elementos.anoAtual.textContent = new Date().getFullYear();
 }
 
-/* INICIALIZAÇÃO */
+/* =========================================
+   INICIALIZAÇÃO
+========================================= */
 
 async function iniciarSite() {
   configurarEventos();
 
-  await atualizarConfiguracao();
+  atualizarInformacoesRodape();
+
+  if (elementos.painelCarrinho) {
+    elementos.painelCarrinho.setAttribute("inert", "");
+  }
+
+  const configuracaoCarregada = await atualizarConfiguracao();
+
+  if (!configuracaoCarregada) {
+    notificar("Não foi possível carregar as configurações.");
+  }
+
   await atualizarProdutos();
 
   renderizarCategorias();
@@ -765,3 +1015,4 @@ async function iniciarSite() {
 }
 
 iniciarSite();
+```
