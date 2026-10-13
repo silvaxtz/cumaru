@@ -122,14 +122,19 @@
       "destaque": false,
       "aumentoEvento": 0
     },
-    {
+      {
       "id": "vodka-teste",
       "nome": "Vodka de Teste 1L",
       "categoria": "Destilados",
       "descricao": "Produto fictício para testar o catálogo",
       "preco": 45.00,
       "embalagens": [
-        {"id": "garrafa", "nome": "Garrafa", "quantidade": 1, "preco": 45.00},
+        {
+          "id": "garrafa",
+          "nome": "Garrafa",
+          "quantidade": 1,
+          "preco": 45.00
+        }
       ],
       "imagem": "",
       "disponivel": true,
