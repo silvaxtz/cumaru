@@ -1,7 +1,7 @@
 
 "use strict";
 
-/* DEPÓSITO CUMARU — catálogo e pedidos */
+/* DEPÓSITO CUMARU — catálogo, embalagens e pedidos */
 
 const ARQUIVOS = {
   produtos: "./produtos.json",
@@ -27,7 +27,7 @@ const ICONES = {
   energetico: '<path d="m13 2-8 12h6l-1 8 9-13h-6z"/>',
   destilado: '<path d="M9 3h6v4l3 4v10H6V11l3-4zM9 7h6M7 13h10"/>',
   agua: '<path d="M12 2S5 10 5 15a7 7 0 0 0 14 0c0-5-7-13-7-13zM9 16a3 3 0 0 0 3 3"/>',
-  gelo: '<path d="m12 2 8 5v10l-8 5-8-5V7zM4 7l8 5 8-5M12 12v10M8 4.5l8 5M16 4.5l-8 5"/>',
+  gelo: '<path d="m12 2 8 5v10l-8 5-8-5V7zM4 7l8 5 8-5M12 12v10"/>',
   outros: '<path d="M4 5h16v14H4zM8 9h8M8 13h5"/>'
 };
 
@@ -88,7 +88,7 @@ function formatarDinheiro(valor) {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: configuracao.moeda || "BRL"
-  }).format(valor);
+  }).format(Number(valor) || 0);
 }
 
 function iconeSVG(nome) {
@@ -143,7 +143,7 @@ async function buscarJSON(caminho) {
   return resposta.json();
 }
 
-/* VALIDAÇÃO */
+/* VALIDAÇÃO DA CONFIGURAÇÃO */
 
 function validarConfiguracao(dados) {
   if (!dados || typeof dados !== "object" || Array.isArray(dados)) {
@@ -156,7 +156,6 @@ function validarConfiguracao(dados) {
   return {
     ...CONFIG_PADRAO,
     ...dados,
-
     modoEvento: dados.modoEvento === true,
 
     aumentoGeralPercentual: Number.isFinite(percentual)
@@ -169,6 +168,46 @@ function validarConfiguracao(dados) {
 
     whatsapp: String(dados.whatsapp || "").replace(/\D/g, "")
   };
+}
+
+/* VALIDAÇÃO DOS PRODUTOS E EMBALAGENS */
+
+function prepararEmbalagens(produto) {
+  if (Array.isArray(produto.embalagens) && produto.embalagens.length) {
+    return produto.embalagens
+      .filter((embalagem) => embalagem && typeof embalagem === "object")
+      .map((embalagem, indice) => {
+        const precoInformado = embalagem.preco;
+        const preco = precoInformado === null ||
+          precoInformado === undefined ||
+          precoInformado === ""
+          ? null
+          : Number(precoInformado);
+
+        const precoValido = preco !== null &&
+          Number.isFinite(preco) &&
+          preco >= 0;
+
+        return {
+          id: String(embalagem.id || `embalagem-${indice + 1}`),
+          nome: String(embalagem.nome || "Unidade"),
+          quantidade: Math.max(1, Number(embalagem.quantidade) || 1),
+          preco: precoValido ? preco : null,
+          disponivel: precoValido && embalagem.disponivel !== false
+        };
+      });
+  }
+
+  // Compatibilidade com o formato antigo: apenas uma unidade.
+  const preco = Number(produto.preco);
+
+  return [{
+    id: "unidade",
+    nome: "Unidade",
+    quantidade: 1,
+    preco: Number.isFinite(preco) && preco >= 0 ? preco : null,
+    disponivel: Number.isFinite(preco) && preco >= 0
+  }];
 }
 
 function validarProdutos(dados) {
@@ -185,7 +224,13 @@ function validarProdutos(dados) {
     const nome = String(produto.nome || "").trim();
     const preco = Number(produto.preco);
 
-    if (!id || !nome || !Number.isFinite(preco) || preco < 0 || ids.has(id)) {
+    if (
+      !id ||
+      !nome ||
+      !Number.isFinite(preco) ||
+      preco < 0 ||
+      ids.has(id)
+    ) {
       console.warn("Produto ignorado por dados inválidos:", produto);
       return false;
     }
@@ -199,6 +244,7 @@ function validarProdutos(dados) {
     categoria: String(produto.categoria || "Outros"),
     descricao: String(produto.descricao || ""),
     preco: Number(produto.preco),
+    embalagens: prepararEmbalagens(produto),
     imagem: String(produto.imagem || ""),
     disponivel: produto.disponivel !== false,
     destaque: produto.destaque === true,
@@ -213,9 +259,12 @@ function validarProdutos(dados) {
 
 /* PREÇOS */
 
-function obterPreco(produto) {
-  const original = Number(produto.preco);
+function obterPrecoEmbalagem(produto, embalagem) {
+  if (!embalagem || embalagem.preco === null) return null;
 
+  const original = Number(embalagem.preco);
+
+  if (!Number.isFinite(original)) return null;
   if (!configuracao.modoEvento) return original;
 
   let percentual = configuracao.aumentoGeralPercentual;
@@ -231,8 +280,39 @@ function obterPreco(produto) {
   ) / 100;
 }
 
+function obterPreco(produto) {
+  const unidade = produto.embalagens.find(
+    (embalagem) => embalagem.id === "unidade"
+  ) || produto.embalagens[0];
+
+  return obterPrecoEmbalagem(produto, unidade) ?? produto.preco;
+}
+
 function obterProduto(id) {
   return produtos.find((produto) => produto.id === id);
+}
+
+function obterEmbalagem(produto, embalagemId) {
+  return produto?.embalagens.find(
+    (embalagem) => embalagem.id === embalagemId
+  );
+}
+
+function criarChaveCarrinho(produtoId, embalagemId) {
+  return `${produtoId}::${embalagemId}`;
+}
+
+function separarChaveCarrinho(chave) {
+  const posicao = chave.lastIndexOf("::");
+
+  if (posicao === -1) {
+    return { produtoId: chave, embalagemId: "unidade" };
+  }
+
+  return {
+    produtoId: chave.slice(0, posicao),
+    embalagemId: chave.slice(posicao + 2)
+  };
 }
 
 function obterQuantidadeCarrinho() {
@@ -248,16 +328,19 @@ function obterQuantidadeCarrinho() {
 function obterSubtotal() {
   let total = 0;
 
-  for (const [id, quantidade] of carrinho.entries()) {
-    const produto = obterProduto(id);
+  for (const [chave, quantidade] of carrinho.entries()) {
+    const { produtoId, embalagemId } = separarChaveCarrinho(chave);
+    const produto = obterProduto(produtoId);
+    const embalagem = obterEmbalagem(produto, embalagemId);
+    const preco = obterPrecoEmbalagem(produto, embalagem);
 
-    if (produto) total += obterPreco(produto) * quantidade;
+    if (preco !== null) total += preco * quantidade;
   }
 
   return Math.round((total + Number.EPSILON) * 100) / 100;
 }
 
-/* CATEGORIAS SEM EMOJIS */
+/* CATEGORIAS */
 
 function obterCategorias() {
   const existentes = [...new Set(
@@ -356,8 +439,6 @@ function renderizarProdutos() {
   }
 
   elementos.gradeProdutos.innerHTML = lista.map((produto) => {
-    const preco = obterPreco(produto);
-
     const indisponivel =
       !produto.disponivel &&
       !configuracao.permitirProdutosIndisponiveisNoCarrinho;
@@ -379,6 +460,35 @@ function renderizarProdutos() {
       `
       : '<span class="produto-placeholder">C</span>';
 
+    const embalagensValidas = produto.embalagens.filter(
+      (embalagem) => embalagem.preco !== null
+    );
+
+    const primeiraDisponivel = embalagensValidas[0];
+    const precoInicial = primeiraDisponivel
+      ? obterPrecoEmbalagem(produto, primeiraDisponivel)
+      : null;
+
+    const opcoesEmbalagem = produto.embalagens.map((embalagem) => {
+      const semPreco = embalagem.preco === null;
+      const semEstoque = !embalagem.disponivel;
+      const desabilitada = semPreco || semEstoque || indisponivel;
+
+      let nome = embalagem.nome;
+
+      if (semPreco) nome += " — preço não cadastrado";
+      else if (semEstoque) nome += " — indisponível";
+
+      return `
+        <option
+          value="${escaparHTML(embalagem.id)}"
+          ${embalagem.id === primeiraDisponivel?.id ? "selected" : ""}
+          ${desabilitada ? "disabled" : ""}>
+          ${escaparHTML(nome)}
+        </option>
+      `;
+    }).join("");
+
     return `
       <article class="produto-card">
         <div class="produto-imagem">
@@ -397,10 +507,22 @@ function renderizarProdutos() {
             ${escaparHTML(produto.descricao)}
           </p>
 
+          <label class="produto-embalagem">
+            <span>Escolha a embalagem</span>
+            <select
+              class="seletor-embalagem"
+              data-embalagem-produto="${escaparHTML(produto.id)}"
+              ${embalagensValidas.length === 0 ? "disabled" : ""}>
+              ${opcoesEmbalagem}
+            </select>
+          </label>
+
           <div class="produto-rodape">
             <div class="produto-preco">
               <small>${configuracao.modoEvento ? "Preço de evento" : "Preço"}</small>
-              <strong>${formatarDinheiro(preco)}</strong>
+              <strong data-preco-produto="${escaparHTML(produto.id)}">
+                ${precoInicial === null ? "Preço a consultar" : formatarDinheiro(precoInicial)}
+              </strong>
             </div>
 
             <button
@@ -408,7 +530,7 @@ function renderizarProdutos() {
               class="botao-adicionar"
               data-adicionar="${escaparHTML(produto.id)}"
               aria-label="Adicionar ${escaparHTML(produto.nome)}"
-              ${indisponivel ? "disabled" : ""}>
+              ${indisponivel || !primeiraDisponivel ? "disabled" : ""}>
               +
             </button>
           </div>
@@ -418,12 +540,43 @@ function renderizarProdutos() {
   }).join("");
 }
 
-/* CARRINHO */
+/* SELEÇÃO DE EMBALAGEM */
 
-function adicionarProduto(id) {
-  const produto = obterProduto(id);
+function atualizarPrecoCard(produtoId, embalagemId) {
+  const produto = obterProduto(produtoId);
+  const embalagem = obterEmbalagem(produto, embalagemId);
+  const precoElemento = document.querySelector(
+    `[data-preco-produto="${CSS.escape(produtoId)}"]`
+  );
+  const botao = document.querySelector(
+    `[data-adicionar="${CSS.escape(produtoId)}"]`
+  );
 
-  if (!produto) return;
+  if (!produto || !embalagem || !precoElemento) return;
+
+  const preco = obterPrecoEmbalagem(produto, embalagem);
+  const disponivel = produto.disponivel &&
+    embalagem.disponivel &&
+    preco !== null;
+
+  precoElemento.textContent = preco === null
+    ? "Preço a consultar"
+    : formatarDinheiro(preco);
+
+  if (botao) {
+    botao.disabled = !disponivel;
+    botao.setAttribute(
+      "aria-label",
+      `Adicionar ${produto.nome} — ${embalagem.nome}`
+    );
+  }
+}
+
+function adicionarProduto(produtoId, embalagemId) {
+  const produto = obterProduto(produtoId);
+  const embalagem = obterEmbalagem(produto, embalagemId);
+
+  if (!produto || !embalagem) return;
 
   if (
     !produto.disponivel &&
@@ -433,33 +586,40 @@ function adicionarProduto(id) {
     return;
   }
 
-  carrinho.set(id, (carrinho.get(id) || 0) + 1);
+  const preco = obterPrecoEmbalagem(produto, embalagem);
 
-  renderizarProdutos();
-  renderizarCarrinho();
-
-  notificar(`${produto.nome} adicionado ao pedido.`);
-}
-
-function alterarQuantidade(id, delta) {
-  const nova = (carrinho.get(id) || 0) + delta;
-
-  if (nova <= 0) {
-    carrinho.delete(id);
-  } else {
-    carrinho.set(id, nova);
+  if (preco === null || !embalagem.disponivel) {
+    notificar("Cadastre o preço desta embalagem antes de adicioná-la.");
+    return;
   }
 
-  renderizarProdutos();
+  const chave = criarChaveCarrinho(produtoId, embalagemId);
+
+  carrinho.set(chave, (carrinho.get(chave) || 0) + 1);
+
+  renderizarCarrinho();
+  notificar(`${produto.nome} — ${embalagem.nome} adicionado ao pedido.`);
+}
+
+function alterarQuantidade(chave, delta) {
+  const nova = (carrinho.get(chave) || 0) + delta;
+
+  if (nova <= 0) {
+    carrinho.delete(chave);
+  } else {
+    carrinho.set(chave, nova);
+  }
+
   renderizarCarrinho();
 }
 
-function removerProduto(id) {
-  carrinho.delete(id);
-  renderizarProdutos();
+function removerProduto(chave) {
+  carrinho.delete(chave);
   renderizarCarrinho();
-  notificar("Produto removido do pedido.");
+  notificar("Item removido do pedido.");
 }
+
+/* CARRINHO */
 
 function renderizarCarrinho() {
   if (!elementos.itensCarrinho) return;
@@ -487,24 +647,32 @@ function renderizarCarrinho() {
   }
 
   elementos.itensCarrinho.innerHTML = [...carrinho.entries()]
-    .map(([id, quantidade]) => {
-      const produto = obterProduto(id);
-      if (!produto) return "";
+    .map(([chave, quantidade]) => {
+      const { produtoId, embalagemId } = separarChaveCarrinho(chave);
+      const produto = obterProduto(produtoId);
+      const embalagem = obterEmbalagem(produto, embalagemId);
+
+      if (!produto || !embalagem) return "";
+
+      const preco = obterPrecoEmbalagem(produto, embalagem);
+
+      if (preco === null) return "";
 
       return `
         <article class="item-carrinho">
           <div>
             <h3>${escaparHTML(produto.nome)}</h3>
+            <p>${escaparHTML(embalagem.nome)}</p>
 
             <div class="item-carrinho-preco">
-              ${formatarDinheiro(obterPreco(produto) * quantidade)}
+              ${formatarDinheiro(preco * quantidade)}
             </div>
 
             <div class="item-carrinho-controles">
               <button
                 type="button"
                 class="botao-quantidade"
-                data-diminuir="${escaparHTML(id)}"
+                data-diminuir="${escaparHTML(chave)}"
                 aria-label="Diminuir quantidade">−</button>
 
               <span>${quantidade}</span>
@@ -512,7 +680,7 @@ function renderizarCarrinho() {
               <button
                 type="button"
                 class="botao-quantidade"
-                data-aumentar="${escaparHTML(id)}"
+                data-aumentar="${escaparHTML(chave)}"
                 aria-label="Aumentar quantidade">+</button>
             </div>
           </div>
@@ -520,7 +688,7 @@ function renderizarCarrinho() {
           <button
             type="button"
             class="botao-remover"
-            data-remover="${escaparHTML(id)}">
+            data-remover="${escaparHTML(chave)}">
             Remover
           </button>
         </article>
@@ -574,9 +742,12 @@ function finalizarPedido() {
     "MEU PEDIDO:"
   ];
 
-  for (const [id, quantidade] of carrinho.entries()) {
-    const produto = obterProduto(id);
-    if (!produto) continue;
+  for (const [chave, quantidade] of carrinho.entries()) {
+    const { produtoId, embalagemId } = separarChaveCarrinho(chave);
+    const produto = obterProduto(produtoId);
+    const embalagem = obterEmbalagem(produto, embalagemId);
+
+    if (!produto || !embalagem) continue;
 
     if (
       !produto.disponivel &&
@@ -586,8 +757,15 @@ function finalizarPedido() {
       return;
     }
 
+    const preco = obterPrecoEmbalagem(produto, embalagem);
+
+    if (preco === null) {
+      notificar(`O preço de ${produto.nome} — ${embalagem.nome} precisa ser cadastrado.`);
+      return;
+    }
+
     linhas.push(
-      `${quantidade}x ${produto.nome} — ${formatarDinheiro(obterPreco(produto) * quantidade)}`
+      `${quantidade}x ${produto.nome} (${embalagem.nome}) — ${formatarDinheiro(preco * quantidade)}`
     );
   }
 
@@ -630,12 +808,9 @@ async function atualizarConfiguracao() {
     }
 
     if (elementos.linkWhatsappRodape) {
-      if (configuracao.whatsapp) {
-        elementos.linkWhatsappRodape.href =
-          `https://wa.me/${configuracao.whatsapp}`;
-      } else {
-        elementos.linkWhatsappRodape.href = "#contato";
-      }
+      elementos.linkWhatsappRodape.href = configuracao.whatsapp
+        ? `https://wa.me/${configuracao.whatsapp}`
+        : "#contato";
     }
 
     const endereco = $("#endereco-rodape");
@@ -662,8 +837,14 @@ async function atualizarProdutos() {
       await buscarJSON(ARQUIVOS.produtos)
     );
 
-    for (const id of carrinho.keys()) {
-      if (!obterProduto(id)) carrinho.delete(id);
+    for (const chave of carrinho.keys()) {
+      const { produtoId, embalagemId } = separarChaveCarrinho(chave);
+      const produto = obterProduto(produtoId);
+      const embalagem = obterEmbalagem(produto, embalagemId);
+
+      if (!produto || !embalagem || embalagem.preco === null) {
+        carrinho.delete(chave);
+      }
     }
 
     renderizarCategorias();
@@ -726,9 +907,31 @@ function configurarEventos() {
     });
   });
 
+  elementos.gradeProdutos?.addEventListener("change", (evento) => {
+    const seletor = evento.target.closest("[data-embalagem-produto]");
+    if (!seletor) return;
+
+    atualizarPrecoCard(
+      seletor.dataset.embalagemProduto,
+      seletor.value
+    );
+  });
+
   elementos.gradeProdutos?.addEventListener("click", (evento) => {
     const botao = evento.target.closest("[data-adicionar]");
-    if (botao) adicionarProduto(botao.dataset.adicionar);
+    if (!botao) return;
+
+    const produtoId = botao.dataset.adicionar;
+    const seletor = elementos.gradeProdutos.querySelector(
+      `[data-embalagem-produto="${CSS.escape(produtoId)}"]`
+    );
+
+    if (!seletor || !seletor.value) {
+      notificar("Escolha uma embalagem com preço cadastrado.");
+      return;
+    }
+
+    adicionarProduto(produtoId, seletor.value);
   });
 
   elementos.itensCarrinho?.addEventListener("click", (evento) => {
