@@ -495,11 +495,12 @@ function renderizarProdutos() {
     );
 
     const primeiraDisponivel = embalagensValidas[0];
+
     const precoInicial = primeiraDisponivel
       ? obterPrecoEmbalagem(produto, primeiraDisponivel)
       : null;
 
-    // Só mostra o seletor quando há mais de uma embalagem disponível.
+    // O seletor só aparece se houver mais de uma embalagem disponível.
     const mostrarSeletor = embalagensValidas.length > 1;
 
     const opcoesEmbalagem = produto.embalagens.map((embalagem) => {
@@ -543,21 +544,17 @@ function renderizarProdutos() {
             ${escaparHTML(produto.descricao)}
           </p>
 
-          ${
-            mostrarSeletor
-              ? `
-                <label class="produto-embalagem">
-                  <span>Escolha a embalagem</span>
-                  <select
-                    class="seletor-embalagem"
-                    data-embalagem-produto="${escaparHTML(produto.id)}"
-                    ${indisponivel ? "disabled" : ""}>
-                    ${opcoesEmbalagem}
-                  </select>
-                </label>
-              `
-              : ""
-          }
+          ${mostrarSeletor ? `
+            <label class="produto-embalagem">
+              <span>Escolha a embalagem</span>
+              <select
+                class="seletor-embalagem"
+                data-embalagem-produto="${escaparHTML(produto.id)}"
+                ${indisponivel ? "disabled" : ""}>
+                ${opcoesEmbalagem}
+              </select>
+            </label>
+          ` : ""}
 
           <div class="produto-rodape">
             <div class="produto-preco">
@@ -565,11 +562,9 @@ function renderizarProdutos() {
                 ${configuracao.modoEvento ? "Preço de evento" : "Preço"}
               </small>
               <strong data-preco-produto="${escaparHTML(produto.id)}">
-                ${
-                  precoInicial === null
-                    ? "Preço a consultar"
-                    : formatarDinheiro(precoInicial)
-                }
+                ${precoInicial === null
+                  ? "Preço a consultar"
+                  : formatarDinheiro(precoInicial)}
               </strong>
             </div>
 
@@ -1001,16 +996,16 @@ function configurarEventos() {
     if (!botao) return;
 
     const produtoId = botao.dataset.adicionar;
-
     const produto = obterProduto(produtoId);
+
     if (!produto) return;
 
     const seletor = elementos.gradeProdutos.querySelector(
       `[data-embalagem-produto="${CSS.escape(produtoId)}"]`
     );
 
-    // Se houver seletor, usa a embalagem escolhida.
-    // Se não houver, adiciona a única embalagem disponível.
+    // Com seletor, usa a escolha do cliente.
+    // Sem seletor, adiciona a única embalagem disponível.
     const embalagemId = seletor
       ? seletor.value
       : produto.embalagens.find(
