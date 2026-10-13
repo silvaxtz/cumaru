@@ -1,4 +1,3 @@
-
 {
   "produtos": [
     {
@@ -6,11 +5,26 @@
       "nome": "Água Mineral 500ml",
       "categoria": "Águas e Sucos",
       "descricao": "Garrafa de 500ml",
-      "preco": 2.00,
+      "preco": 2.5,
       "embalagens": [
-        {"id": "unidade", "nome": "Unidade", "quantidade": 1, "preco": 2.00},
-        {"id": "caixa-6", "nome": "Caixa com 6", "quantidade": 6, "preco": 10.00},
-        {"id": "caixa-12", "nome": "Caixa com 12", "quantidade": 12, "preco": 18.00}
+        {
+          "id": "unidade",
+          "nome": "Unidade",
+          "quantidade": 1,
+          "preco": 2
+        },
+        {
+          "id": "caixa-6",
+          "nome": "Caixa com 6",
+          "quantidade": 6,
+          "preco": 10
+        },
+        {
+          "id": "caixa-12",
+          "nome": "Caixa com 12",
+          "quantidade": 12,
+          "preco": 18
+        }
       ],
       "imagem": "",
       "disponivel": true,
@@ -22,10 +36,20 @@
       "nome": "Refrigerante Cola 2L",
       "categoria": "Refrigerantes",
       "descricao": "Garrafa de 2 litros",
-      "preco": 9.00,
+      "preco": 9,
       "embalagens": [
-        {"id": "unidade", "nome": "Unidade", "quantidade": 1, "preco": 9.00},
-        {"id": "caixa-6", "nome": "Caixa com 6", "quantidade": 6, "preco": 48.00}
+        {
+          "id": "unidade",
+          "nome": "Unidade",
+          "quantidade": 1,
+          "preco": 9
+        },
+        {
+          "id": "caixa-6",
+          "nome": "Caixa com 6",
+          "quantidade": 6,
+          "preco": 48
+        }
       ],
       "imagem": "",
       "disponivel": true,
@@ -37,10 +61,20 @@
       "nome": "Refrigerante Laranja 2L",
       "categoria": "Refrigerantes",
       "descricao": "Garrafa de 2 litros",
-      "preco": 7.50,
+      "preco": 7.5,
       "embalagens": [
-        {"id": "unidade", "nome": "Unidade", "quantidade": 1, "preco": 7.50},
-        {"id": "caixa-6", "nome": "Caixa com 6", "quantidade": 6, "preco": 42.00}
+        {
+          "id": "unidade",
+          "nome": "Unidade",
+          "quantidade": 1,
+          "preco": 7.5
+        },
+        {
+          "id": "caixa-6",
+          "nome": "Caixa com 6",
+          "quantidade": 6,
+          "preco": 42
+        }
       ],
       "imagem": "",
       "disponivel": true,
@@ -52,11 +86,26 @@
       "nome": "Cerveja Pilsen 350ml",
       "categoria": "Cervejas",
       "descricao": "Lata de 350ml",
-      "preco": 4.50,
+      "preco": 4.5,
       "embalagens": [
-        {"id": "unidade", "nome": "Unidade", "quantidade": 1, "preco": 4.50},
-        {"id": "caixa-6", "nome": "Caixa com 6", "quantidade": 6, "preco": 25.00},
-        {"id": "caixa-12", "nome": "Caixa com 12", "quantidade": 12, "preco": 48.00}
+        {
+          "id": "unidade",
+          "nome": "Unidade",
+          "quantidade": 1,
+          "preco": 4.5
+        },
+        {
+          "id": "caixa-6",
+          "nome": "Caixa com 6",
+          "quantidade": 6,
+          "preco": 25
+        },
+        {
+          "id": "caixa-12",
+          "nome": "Caixa com 12",
+          "quantidade": 12,
+          "preco": 48
+        }
       ],
       "imagem": "",
       "disponivel": true,
@@ -68,10 +117,20 @@
       "nome": "Cerveja Long Neck 330ml",
       "categoria": "Cervejas",
       "descricao": "Garrafa long neck",
-      "preco": 6.00,
+      "preco": 6,
       "embalagens": [
-        {"id": "unidade", "nome": "Unidade", "quantidade": 1, "preco": 6.00},
-        {"id": "caixa-6", "nome": "Caixa com 6", "quantidade": 6, "preco": 33.00}
+        {
+          "id": "unidade",
+          "nome": "Unidade",
+          "quantidade": 1,
+          "preco": 6
+        },
+        {
+          "id": "caixa-6",
+          "nome": "Caixa com 6",
+          "quantidade": 6,
+          "preco": 33
+        }
       ],
       "imagem": "",
       "disponivel": true,
@@ -83,10 +142,20 @@
       "nome": "Energético 473ml",
       "categoria": "Energéticos",
       "descricao": "Lata de 473ml",
-      "preco": 10.00,
+      "preco": 10,
       "embalagens": [
-        {"id": "unidade", "nome": "Unidade", "quantidade": 1, "preco": 10.00},
-        {"id": "caixa-6", "nome": "Caixa com 6", "quantidade": 6, "preco": 55.00}
+        {
+          "id": "unidade",
+          "nome": "Unidade",
+          "quantidade": 1,
+          "preco": 10
+        },
+        {
+          "id": "caixa-6",
+          "nome": "Caixa com 6",
+          "quantidade": 6,
+          "preco": 55
+        }
       ],
       "imagem": "",
       "disponivel": true,
@@ -98,9 +167,14 @@
       "nome": "Saco de Gelo",
       "categoria": "Gelo",
       "descricao": "Saco de gelo para bebidas",
-      "preco": 8.00,
+      "preco": 8,
       "embalagens": [
-        {"id": "unidade", "nome": "Saco", "quantidade": 1, "preco": 8.00}
+        {
+          "id": "unidade",
+          "nome": "Saco",
+          "quantidade": 1,
+          "preco": 8
+        }
       ],
       "imagem": "",
       "disponivel": true,
@@ -112,28 +186,38 @@
       "nome": "Suco de Uva 1L",
       "categoria": "Águas e Sucos",
       "descricao": "Embalagem de 1 litro",
-      "preco": 8.50,
+      "preco": 8.5,
       "embalagens": [
-        {"id": "unidade", "nome": "Unidade", "quantidade": 1, "preco": 8.50},
-        {"id": "caixa-6", "nome": "Caixa com 6", "quantidade": 6, "preco": 48.00}
+        {
+          "id": "unidade",
+          "nome": "Unidade",
+          "quantidade": 1,
+          "preco": 8.5
+        },
+        {
+          "id": "caixa-6",
+          "nome": "Caixa com 6",
+          "quantidade": 6,
+          "preco": 48
+        }
       ],
       "imagem": "",
       "disponivel": true,
       "destaque": false,
       "aumentoEvento": 0
     },
-      {
+    {
       "id": "vodka-teste",
       "nome": "Vodka de Teste 1L",
       "categoria": "Destilados",
       "descricao": "Produto fictício para testar o catálogo",
-      "preco": 45.00,
+      "preco": 45,
       "embalagens": [
         {
           "id": "garrafa",
           "nome": "Garrafa",
           "quantidade": 1,
-          "preco": 45.00
+          "preco": 45
         }
       ],
       "imagem": "",
@@ -146,10 +230,20 @@
       "nome": "Carvão 3kg",
       "categoria": "Conveniência",
       "descricao": "Pacote de carvão para churrasco",
-      "preco": 15.00,
+      "preco": 15,
       "embalagens": [
-        {"id": "unidade", "nome": "Pacote", "quantidade": 1, "preco": 15.00},
-        {"id": "caixa-6", "nome": "Caixa com 6", "quantidade": 6, "preco": 84.00}
+        {
+          "id": "unidade",
+          "nome": "Pacote",
+          "quantidade": 1,
+          "preco": 15
+        },
+        {
+          "id": "caixa-6",
+          "nome": "Caixa com 6",
+          "quantidade": 6,
+          "preco": 84
+        }
       ],
       "imagem": "",
       "disponivel": true,
